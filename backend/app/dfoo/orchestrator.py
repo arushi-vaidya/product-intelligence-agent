@@ -11,6 +11,9 @@ from app.agents.source_validation_agent import (
 from app.agents.product_intelligence_agent import (
     ProductIntelligenceAgent
 )
+from app.agents.enrichment_agent import (
+    EnrichmentAgent
+)
 from app.agents.document_agent import (
     DocumentAgent
 )
@@ -53,6 +56,7 @@ class DFOO:
             "akgp_agent": AKGPAgent(),
             "product_intelligence_agent": ProductIntelligenceAgent(),
             "canonical_resolution_agent": CanonicalResolutionAgent(),
+            "enrichment_agent": EnrichmentAgent(),
         }
 
     def create_task(
@@ -520,40 +524,14 @@ class DFOO:
             canonical_task.id
         )
         # -----------------------------------
-# 9. Product Intelligence
+# Enrichment
 # -----------------------------------
 
-        akgp_task = self.task_repository.get_task(
-            akgp_task.id
-        )
-
-        if akgp_task.status != TaskStatus.DONE:
-
-            investigation.status = TaskStatus.FAILED
-
-            self.investigation_repository.update(
-                investigation
-            )
-
-            return investigation
-
-
-        # Get AKGP output
-        akgp_output = (
-            akgp_task.output_data
-            .get("data", {})
-        )
-
-
-        # -----------------------------------
-        # Build Product Intelligence input
-        # -----------------------------------
-
         canonical_task = (
-    self.task_repository.get_task(
-        canonical_task.id
-    )
-)
+            self.task_repository.get_task(
+                canonical_task.id
+            )
+        )
 
         if canonical_task.status != TaskStatus.DONE:
 
@@ -574,6 +552,83 @@ class DFOO:
         )
 
 
+        enrichment_input = {
+
+            "manufacturer": product.get(
+                "manufacturer"
+            ),
+
+            "mpn": product.get(
+                "mpn"
+            ),
+
+            "canonical_product": (
+                canonical_output.get(
+                    "canonical_product",
+                    {}
+                )
+            ),
+
+            "sources": (
+                research_output.get(
+                    "sources",
+                    []
+                )
+            ),
+        }
+
+
+        enrichment_task = self.create_task(
+
+            investigation_id=investigation_id,
+
+            agent_name="enrichment_agent",
+
+            input_data=enrichment_input,
+
+            depends_on=[
+                canonical_task.id
+            ],
+        )
+
+
+        await self.run_task(
+            enrichment_task.id
+        )
+       # -----------------------------------
+# 10. Product Intelligence
+# -----------------------------------
+
+        enrichment_task = (
+            self.task_repository.get_task(
+                enrichment_task.id
+            )
+        )
+
+        if enrichment_task.status != TaskStatus.DONE:
+
+            investigation.status = (
+                TaskStatus.FAILED
+            )
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        # Get enrichment output
+        enrichment_output = (
+            enrichment_task.output_data
+            .get("data", {})
+        )
+
+
+        # -----------------------------------
+        # Build Product Intelligence input
+        # -----------------------------------
+
         product_intelligence_input = {
 
             "manufacturer": product.get(
@@ -587,6 +642,13 @@ class DFOO:
             "canonical_product": (
                 canonical_output.get(
                     "canonical_product",
+                    {}
+                )
+            ),
+
+            "enrichment": (
+                enrichment_output.get(
+                    "enrichment",
                     {}
                 )
             ),
@@ -611,13 +673,23 @@ class DFOO:
         # Create Product Intelligence task
         # -----------------------------------
 
-        product_intelligence_task = self.create_task(
-            investigation_id=investigation_id,
-            agent_name="product_intelligence_agent",
-            input_data=product_intelligence_input,
-            depends_on=[
-                canonical_task.id
-            ],
+        product_intelligence_task = (
+            self.create_task(
+
+                investigation_id=investigation_id,
+
+                agent_name=(
+                    "product_intelligence_agent"
+                ),
+
+                input_data=(
+                    product_intelligence_input
+                ),
+
+                depends_on=[
+                    enrichment_task.id
+                ],
+            )
         )
 
 

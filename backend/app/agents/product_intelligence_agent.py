@@ -13,7 +13,10 @@ class ProductIntelligenceAgent(Agent):
         # -----------------------------------
         # Basic product information
         # -----------------------------------
-
+        enrichment = input.context.get(
+            "enrichment",
+            {}
+        )
         manufacturer = input.context.get(
             "manufacturer"
         )
@@ -79,7 +82,7 @@ class ProductIntelligenceAgent(Agent):
             "product_category": (
                 "industrial_electrical"
             ),
-
+            "enrichment": enrichment,
             "family_specifications": (
                 family_specifications
             ),
