@@ -21,6 +21,9 @@ from .task_repository import (
     TaskRepository,
     InvestigationRepository,
 )
+from app.agents.specification_agent import (
+    SpecificationAgent
+)
 
 
 class DFOO:
@@ -37,6 +40,7 @@ class DFOO:
             "research_agent": ResearchAgent(),
             "source_validation_agent": SourceValidationAgent(),
             "document_agent": DocumentAgent(),
+            "specification_agent": SpecificationAgent(),
         }
 
     def create_task(
@@ -253,6 +257,59 @@ class DFOO:
 
         await self.run_task(
             document_task.id
+        )
+        document_task = (
+    self.task_repository.get_task(
+        document_task.id
+    )
+)
+
+        if document_task.status != TaskStatus.DONE:
+
+            investigation.status = (
+                TaskStatus.FAILED
+            )
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        # -----------------------------------
+        # 6. Specification extraction
+        # -----------------------------------
+
+        document_output = (
+            document_task.output_data
+            .get("data", {})
+        )
+
+        specification_input = {
+            "manufacturer": product.get(
+                "manufacturer"
+            ),
+            "mpn": product.get(
+                "mpn"
+            ),
+            "documents": document_output.get(
+                "documents",
+                []
+            ),
+        }
+
+        specification_task = self.create_task(
+            investigation_id=investigation_id,
+            agent_name="specification_agent",
+            input_data=specification_input,
+            depends_on=[
+                document_task.id
+            ],
+        )
+
+        await self.run_task(
+            specification_task.id
         )
 
         # -----------------------------------
