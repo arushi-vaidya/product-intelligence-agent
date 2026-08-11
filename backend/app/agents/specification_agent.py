@@ -326,10 +326,10 @@ class SpecificationAgent(Agent):
         specifications[field]["evidence"].append(
             {
                 "source_id": source_id,
+                "value": value,
+                "unit": unit,
                 "text": text,
-                "extraction_method": (
-                    extraction_method
-                ),
+                "extraction_method": extraction_method,
             }
         )
 

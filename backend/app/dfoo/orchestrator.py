@@ -24,6 +24,7 @@ from .task_repository import (
 from app.agents.specification_agent import (
     SpecificationAgent
 )
+from app.agents.conflict_agent import ConflictAgent
 
 
 class DFOO:
@@ -41,6 +42,7 @@ class DFOO:
             "source_validation_agent": SourceValidationAgent(),
             "document_agent": DocumentAgent(),
             "specification_agent": SpecificationAgent(),
+            "conflict_agent": ConflictAgent(),
         }
 
     def create_task(
@@ -310,6 +312,59 @@ class DFOO:
 
         await self.run_task(
             specification_task.id
+        )
+        specification_task = (
+    self.task_repository.get_task(
+        specification_task.id
+    )
+)
+
+        if specification_task.status != TaskStatus.DONE:
+
+            investigation.status = TaskStatus.FAILED
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        # -----------------------------------
+        # 7. Conflict / Quality Analysis
+        # -----------------------------------
+
+        specification_output = (
+            specification_task.output_data
+            .get("data", {})
+        )
+
+        conflict_input = {
+            "manufacturer": product.get(
+                "manufacturer"
+            ),
+            "mpn": product.get(
+                "mpn"
+            ),
+            "specifications": (
+                specification_output.get(
+                    "specifications",
+                    {}
+                )
+            ),
+        }
+
+        conflict_task = self.create_task(
+            investigation_id=investigation_id,
+            agent_name="conflict_agent",
+            input_data=conflict_input,
+            depends_on=[
+                specification_task.id
+            ],
+        )
+
+        await self.run_task(
+            conflict_task.id
         )
 
         # -----------------------------------
