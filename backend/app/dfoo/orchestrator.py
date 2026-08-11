@@ -3,6 +3,7 @@ from datetime import datetime
 
 from app.agents.base import AgentInput
 from app.agents.intake_agent import IntakeAgent
+from app.agents.research_agent import ResearchAgent
 
 from .task_state import (
     Task,
@@ -27,7 +28,49 @@ class DFOO:
         # Agent registry
         self.agents = {
             "intake_agent": IntakeAgent(),
+            "research_agent": ResearchAgent(),
         }
+
+    def create_task(
+            self,
+            investigation_id: str,
+            agent_name: str,
+            input_data: dict,
+            depends_on: list[str] | None = None,
+        ):
+
+            task_id = str(uuid.uuid4())
+
+            task = Task(
+                id=task_id,
+                investigation_id=investigation_id,
+                agent_name=agent_name,
+                input_data=input_data,
+                depends_on=depends_on or [],
+            )
+
+            self.task_repository.create_task(task)
+
+            investigation = (
+                self.investigation_repository.get(
+                    investigation_id
+                )
+            )
+
+            if investigation:
+                investigation.task_ids.append(task_id)
+                investigation.updated_at = datetime.utcnow()
+
+                self.investigation_repository.update(
+                    investigation
+                )
+
+            print(
+                f"[DFOO] Task {task_id} created: "
+                f"{agent_name}"
+            )
+
+            return task
 
     async def start_investigation(
         self,
@@ -56,52 +99,79 @@ class DFOO:
         )
 
         # -----------------------------------
-        # 2. Create initial task
+        # 2. Create Intake task
         # -----------------------------------
 
-        task_id = str(uuid.uuid4())
-
-        task = Task(
-            id=task_id,
+        intake_task = self.create_task(
             investigation_id=investigation_id,
             agent_name="intake_agent",
             input_data={
-            "product": product
-        },
-            depends_on=[],
-        )
-
-        self.task_repository.create_task(task)
-
-        investigation.task_ids.append(task_id)
-
-        self.investigation_repository.update(
-            investigation
-        )
-
-        print(
-            f"[DFOO] Task {task_id} created: "
-            f"intake_agent"
+                "product": product
+            },
         )
 
         # -----------------------------------
-        # 3. Execute task
+        # 3. Execute Intake task
         # -----------------------------------
 
-        await self.run_task(task_id)
+        await self.run_task(
+            intake_task.id
+        )
+
+        # Get updated task after execution
+        intake_task = (
+            self.task_repository.get_task(
+                intake_task.id
+            )
+        )
 
         # -----------------------------------
-        # 4. Update investigation status
+        # 4. Create Research task
+        #    ONLY if Intake succeeded
         # -----------------------------------
 
-        task = self.task_repository.get_task(task_id)
+        if intake_task.status == TaskStatus.DONE:
 
-        if task.status == TaskStatus.DONE:
+            intake_output = (
+                intake_task.output_data
+                .get("data", {})
+            )
 
+            research_task = self.create_task(
+                investigation_id=investigation_id,
+                agent_name="research_agent",
+                input_data=intake_output,
+                depends_on=[
+                    intake_task.id
+                ],
+            )
+
+            # -----------------------------------
+            # 5. Execute Research task
+            # -----------------------------------
+
+            await self.run_task(
+                research_task.id
+            )
+
+        # -----------------------------------
+        # 6. Determine final investigation status
+        # -----------------------------------
+
+        tasks = (
+            self.task_repository
+            .get_tasks_for_investigation(
+                investigation_id
+            )
+        )
+
+        if all(
+            task.status == TaskStatus.DONE
+            for task in tasks
+        ):
             investigation.status = TaskStatus.DONE
 
         else:
-
             investigation.status = TaskStatus.FAILED
 
         investigation.updated_at = datetime.utcnow()
