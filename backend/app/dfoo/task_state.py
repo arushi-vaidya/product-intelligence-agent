@@ -1,13 +1,15 @@
 from enum import Enum
-from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     DONE = "done"
+    RETRY = "retry"
     FAILED = "failed"
 
 
@@ -18,10 +20,10 @@ class Task(BaseModel):
     agent_name: str
     status: TaskStatus = TaskStatus.PENDING
 
-    input_data: dict = {}
+    input_data: dict = Field(default_factory=dict)
     output_data: Optional[dict] = None
 
-    depends_on: list[str] = []
+    depends_on: list[str] = Field(default_factory=list)
 
     attempts: int = 0
     max_attempts: int = 2
@@ -34,9 +36,11 @@ class Investigation(BaseModel):
     id: str
 
     input_data: dict
-
     status: TaskStatus = TaskStatus.PENDING
 
-    task_ids: list[str] = []
+    task_ids: list[str] = Field(default_factory=list)
 
     product_id: Optional[str] = None
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
