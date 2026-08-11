@@ -7,6 +7,9 @@ from app.agents.research_agent import ResearchAgent
 from app.agents.source_validation_agent import (
     SourceValidationAgent
 )
+from app.agents.document_agent import (
+    DocumentAgent
+)
 
 from .task_state import (
     Task,
@@ -33,6 +36,7 @@ class DFOO:
             "intake_agent": IntakeAgent(),
             "research_agent": ResearchAgent(),
             "source_validation_agent": SourceValidationAgent(),
+            "document_agent": DocumentAgent(),
         }
 
     def create_task(
@@ -195,6 +199,61 @@ class DFOO:
             await self.run_task(
                 validation_task.id
             )
+            validation_task = (
+    self.task_repository.get_task(
+        validation_task.id
+    )
+)
+
+        if validation_task.status != TaskStatus.DONE:
+
+            investigation.status = (
+                TaskStatus.FAILED
+            )
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        # -----------------------------------
+        # 5. Document extraction
+        # -----------------------------------
+
+        validation_output = (
+            validation_task.output_data
+            .get("data", {})
+        )
+
+        document_input = {
+            "manufacturer": product.get(
+                "manufacturer"
+            ),
+            "mpn": product.get(
+                "mpn"
+            ),
+            "validated_sources": (
+                validation_output.get(
+                    "validated_sources",
+                    []
+                )
+            ),
+        }
+
+        document_task = self.create_task(
+            investigation_id=investigation_id,
+            agent_name="document_agent",
+            input_data=document_input,
+            depends_on=[
+                validation_task.id
+            ],
+        )
+
+        await self.run_task(
+            document_task.id
+        )
 
         # -----------------------------------
         # 6. Determine final investigation status
