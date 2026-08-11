@@ -51,43 +51,81 @@ class SpecificationAgent(Agent):
                 "source_id"
             )
 
+            source_url = document.get(
+                "url"
+            )
+
+            source_title = document.get(
+                "title"
+            )
+
             extraction_method = document.get(
                 "extraction_method"
             )
 
+            # -----------------------------------
+            # Rated Current
+            # -----------------------------------
+
             self._extract_rated_current(
-                text,
-                source_id,
-                extraction_method,
-                specifications,
+                text=text,
+                source_id=source_id,
+                source_url=source_url,
+                source_title=source_title,
+                extraction_method=extraction_method,
+                specifications=specifications,
             )
+
+            # -----------------------------------
+            # Poles
+            # -----------------------------------
 
             self._extract_poles(
-                text,
-                source_id,
-                extraction_method,
-                specifications,
+                text=text,
+                source_id=source_id,
+                source_url=source_url,
+                source_title=source_title,
+                extraction_method=extraction_method,
+                specifications=specifications,
             )
+
+            # -----------------------------------
+            # Trip Curve
+            # -----------------------------------
 
             self._extract_trip_curve(
-                text,
-                source_id,
-                extraction_method,
-                specifications,
+                text=text,
+                source_id=source_id,
+                source_url=source_url,
+                source_title=source_title,
+                extraction_method=extraction_method,
+                specifications=specifications,
             )
+
+            # -----------------------------------
+            # Frequency
+            # -----------------------------------
 
             self._extract_frequency(
-                text,
-                source_id,
-                extraction_method,
-                specifications,
+                text=text,
+                source_id=source_id,
+                source_url=source_url,
+                source_title=source_title,
+                extraction_method=extraction_method,
+                specifications=specifications,
             )
 
+            # -----------------------------------
+            # Breaking Capacity
+            # -----------------------------------
+
             self._extract_breaking_capacity(
-                text,
-                source_id,
-                extraction_method,
-                specifications,
+                text=text,
+                source_id=source_id,
+                source_url=source_url,
+                source_title=source_title,
+                extraction_method=extraction_method,
+                specifications=specifications,
             )
 
         return AgentOutput(
@@ -109,6 +147,8 @@ class SpecificationAgent(Agent):
         self,
         text,
         source_id,
+        source_url,
+        source_title,
         extraction_method,
         specifications,
     ):
@@ -125,6 +165,8 @@ class SpecificationAgent(Agent):
             field="rated_current",
             unit="A",
             source_id=source_id,
+            source_url=source_url,
+            source_title=source_title,
             extraction_method=extraction_method,
             specifications=specifications,
         )
@@ -137,6 +179,8 @@ class SpecificationAgent(Agent):
         self,
         text,
         source_id,
+        source_url,
+        source_title,
         extraction_method,
         specifications,
     ):
@@ -153,13 +197,16 @@ class SpecificationAgent(Agent):
         value = match.group(1) + "P"
 
         self._add_evidence(
-            specifications,
-            "poles",
+            specifications=specifications,
+            field="poles",
             value=value,
             unit=None,
             source_id=source_id,
+            source_url=source_url,
+            source_title=source_title,
             extraction_method=extraction_method,
-            text=match.group(0),
+            matched_text=match.group(0),
+            source_text=text,
         )
 
     # =====================================
@@ -170,6 +217,8 @@ class SpecificationAgent(Agent):
         self,
         text,
         source_id,
+        source_url,
+        source_title,
         extraction_method,
         specifications,
     ):
@@ -187,13 +236,16 @@ class SpecificationAgent(Agent):
         value = match.group(1).upper()
 
         self._add_evidence(
-            specifications,
-            "trip_curve",
+            specifications=specifications,
+            field="trip_curve",
             value=value,
             unit=None,
             source_id=source_id,
+            source_url=source_url,
+            source_title=source_title,
             extraction_method=extraction_method,
-            text=match.group(0),
+            matched_text=match.group(0),
+            source_text=text,
         )
 
     # =====================================
@@ -204,6 +256,8 @@ class SpecificationAgent(Agent):
         self,
         text,
         source_id,
+        source_url,
+        source_title,
         extraction_method,
         specifications,
     ):
@@ -220,13 +274,16 @@ class SpecificationAgent(Agent):
         value = match.group(1)
 
         self._add_evidence(
-            specifications,
-            "frequency",
+            specifications=specifications,
+            field="frequency",
             value=value,
             unit="Hz",
             source_id=source_id,
+            source_url=source_url,
+            source_title=source_title,
             extraction_method=extraction_method,
-            text=match.group(0),
+            matched_text=match.group(0),
+            source_text=text,
         )
 
     # =====================================
@@ -237,13 +294,16 @@ class SpecificationAgent(Agent):
         self,
         text,
         source_id,
+        source_url,
+        source_title,
         extraction_method,
         specifications,
     ):
 
         patterns = [
-            r"(\d+(?:\.\d+)?)\s*kA",
             r"breaking\s+capacity.{0,40}?"
+            r"(\d+(?:\.\d+)?)\s*kA",
+
             r"(\d+(?:\.\d+)?)\s*kA",
         ]
 
@@ -253,6 +313,8 @@ class SpecificationAgent(Agent):
             field="breaking_capacity",
             unit="kA",
             source_id=source_id,
+            source_url=source_url,
+            source_title=source_title,
             extraction_method=extraction_method,
             specifications=specifications,
         )
@@ -268,6 +330,8 @@ class SpecificationAgent(Agent):
         field,
         unit,
         source_id,
+        source_url,
+        source_title,
         extraction_method,
         specifications,
     ):
@@ -286,13 +350,16 @@ class SpecificationAgent(Agent):
             value = match.group(1)
 
             self._add_evidence(
-                specifications,
-                field,
+                specifications=specifications,
+                field=field,
                 value=value,
                 unit=unit,
                 source_id=source_id,
+                source_url=source_url,
+                source_title=source_title,
                 extraction_method=extraction_method,
-                text=match.group(0),
+                matched_text=match.group(0),
+                source_text=text,
             )
 
             return
@@ -308,8 +375,11 @@ class SpecificationAgent(Agent):
         value,
         unit,
         source_id,
+        source_url,
+        source_title,
         extraction_method,
-        text,
+        matched_text,
+        source_text,
     ):
 
         if field not in specifications:
@@ -323,15 +393,84 @@ class SpecificationAgent(Agent):
                 "evidence": [],
             }
 
-        specifications[field]["evidence"].append(
+        evidence_text = (
+            self._get_evidence_context(
+                source_text=source_text,
+                matched_text=matched_text,
+            )
+        )
+
+        specifications[field][
+            "evidence"
+        ].append(
             {
                 "source_id": source_id,
+
+                "source_url": source_url,
+
+                "source_title": source_title,
+
                 "value": value,
+
                 "unit": unit,
-                "text": text,
-                "extraction_method": extraction_method,
+
+                "text": evidence_text,
+
+                "extraction_method": (
+                    extraction_method
+                ),
             }
         )
+
+    # =====================================
+    # EVIDENCE CONTEXT
+    # =====================================
+
+    def _get_evidence_context(
+        self,
+        source_text: str,
+        matched_text: str,
+        window: int = 150,
+    ) -> str:
+
+        if not source_text:
+            return matched_text
+
+        index = source_text.lower().find(
+            matched_text.lower()
+        )
+
+        if index == -1:
+            return matched_text
+
+        start = max(
+            0,
+            index - window
+        )
+
+        end = min(
+            len(source_text),
+            index
+            + len(matched_text)
+            + window
+        )
+
+        context = source_text[
+            start:end
+        ].strip()
+
+        # Clean excessive whitespace
+        context = re.sub(
+            r"\s+",
+            " ",
+            context,
+        )
+
+        return context
+
+    # =====================================
+    # CONFIDENCE
+    # =====================================
 
     def _initial_confidence(
         self,

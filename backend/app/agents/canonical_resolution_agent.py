@@ -37,15 +37,24 @@ class CanonicalResolutionAgent(Agent):
 
         variant_specifications = {}
 
+        # -----------------------------------
         # Start with specifications that
         # are already consistent.
+        #
+        # IMPORTANT:
+        # Preserve evidence here.
+        # -----------------------------------
+
         for field, specification in specifications.items():
 
             status = specification.get(
                 "quality_status"
             )
 
-            if status == "consistent":
+            # If quality_status hasn't been explicitly
+            # assigned yet, treat the field as usable
+            # unless it is an unresolved conflict.
+            if status == "consistent" or not status:
 
                 family_specifications[field] = {
                     "value": specification.get(
@@ -56,6 +65,10 @@ class CanonicalResolutionAgent(Agent):
                     ),
                     "confidence": specification.get(
                         "confidence"
+                    ),
+                    "evidence": specification.get(
+                        "evidence",
+                        []
                     ),
                 }
 
@@ -114,12 +127,14 @@ class CanonicalResolutionAgent(Agent):
             canonical_variants.append(
                 {
                     "mpn": variant_mpn,
+
                     "specifications": (
                         variant_specifications.get(
                             variant_mpn,
                             {}
                         )
                     ),
+
                     "sources": variant.get(
                         "sources",
                         []
