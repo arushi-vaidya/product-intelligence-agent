@@ -8,6 +8,9 @@ from app.agents.akgp_agent import AKGPAgent
 from app.agents.source_validation_agent import (
     SourceValidationAgent
 )
+from app.agents.product_intelligence_agent import (
+    ProductIntelligenceAgent
+)
 from app.agents.document_agent import (
     DocumentAgent
 )
@@ -45,6 +48,7 @@ class DFOO:
             "specification_agent": SpecificationAgent(),
             "conflict_agent": ConflictAgent(),
             "akgp_agent": AKGPAgent(),
+            "product_intelligence_agent": ProductIntelligenceAgent(),
         }
 
     def create_task(
@@ -432,26 +436,129 @@ class DFOO:
         await self.run_task(
             akgp_task.id
         )
+        # -----------------------------------
+# 9. Product Intelligence
+# -----------------------------------
+
+        akgp_task = self.task_repository.get_task(
+            akgp_task.id
+        )
+
+        if akgp_task.status != TaskStatus.DONE:
+
+            investigation.status = TaskStatus.FAILED
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        # Get AKGP output
+        akgp_output = (
+            akgp_task.output_data
+            .get("data", {})
+        )
+
+
+        # -----------------------------------
+        # Build Product Intelligence input
+        # -----------------------------------
+
+        product_intelligence_input = {
+
+            "manufacturer": product.get(
+                "manufacturer"
+            ),
+
+            "mpn": product.get(
+                "mpn"
+            ),
+
+            "specifications": (
+                conflict_output.get(
+                    "specifications",
+                    {}
+                )
+            ),
+
+            "knowledge_graph": (
+                akgp_output.get(
+                    "knowledge_graph",
+                    {}
+                )
+            ),
+
+            "variants": (
+                akgp_output.get(
+                    "variants",
+                    []
+                )
+            ),
+
+            "conflict_resolutions": (
+                akgp_output.get(
+                    "conflict_resolutions",
+                    []
+                )
+            ),
+        }
+
+
+        # -----------------------------------
+        # Create Product Intelligence task
+        # -----------------------------------
+
+        product_intelligence_task = self.create_task(
+
+            investigation_id=investigation_id,
+
+            agent_name=(
+                "product_intelligence_agent"
+            ),
+
+            input_data=(
+                product_intelligence_input
+            ),
+
+            depends_on=[
+                akgp_task.id
+            ],
+        )
+
+
+        # -----------------------------------
+        # Execute Product Intelligence
+        # -----------------------------------
+
+        await self.run_task(
+            product_intelligence_task.id
+        )
 
         # -----------------------------------
         # 6. Determine final investigation status
         # -----------------------------------
 
-        tasks = (
-            self.task_repository
-            .get_tasks_for_investigation(
-                investigation_id
-            )
-        )
+        final_task = (
+    self.task_repository.get_task(
+        product_intelligence_task.id
+    )
+)
 
-        if all(
-            task.status == TaskStatus.DONE
-            for task in tasks
-        ):
+        if final_task.status == TaskStatus.DONE:
+
             investigation.status = TaskStatus.DONE
 
         else:
+
             investigation.status = TaskStatus.FAILED
+
+        investigation.updated_at = datetime.utcnow()
+
+        self.investigation_repository.update(
+            investigation
+        )
 
         investigation.updated_at = datetime.utcnow()
 
