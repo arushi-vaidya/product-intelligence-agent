@@ -1,4 +1,5 @@
 from .base import Agent, AgentInput, AgentOutput
+from app.services.source_filter import SourceFilter
 from app.services.source_discovery import (
     SourceDiscoveryService
 )
@@ -13,6 +14,8 @@ class ResearchAgent(Agent):
         self.source_discovery = (
             SourceDiscoveryService()
         )
+
+        self.source_filter = SourceFilter()
 
     async def run(
         self,
@@ -46,14 +49,35 @@ class ResearchAgent(Agent):
             f"{manufacturer} {mpn}"
         )
 
-        # Ask the source discovery service
-        # to find relevant sources.
+        # -------------------------------
+        # Search
+        # -------------------------------
 
-        sources = await (
+        raw_sources = await (
             self.source_discovery.search_product(
                 manufacturer=manufacturer,
                 mpn=mpn,
             )
+        )
+
+        print(
+            f"[RESEARCH] Raw sources found: "
+            f"{len(raw_sources)}"
+        )
+
+        # -------------------------------
+        # Filter
+        # -------------------------------
+
+        sources = self.source_filter.filter_sources(
+            sources=raw_sources,
+            manufacturer=manufacturer,
+            mpn=mpn,
+        )
+
+        print(
+            f"[RESEARCH] Sources after filtering: "
+            f"{len(sources)}"
         )
 
         return AgentOutput(

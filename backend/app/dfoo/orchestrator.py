@@ -4,6 +4,9 @@ from datetime import datetime
 from app.agents.base import AgentInput
 from app.agents.intake_agent import IntakeAgent
 from app.agents.research_agent import ResearchAgent
+from app.agents.source_validation_agent import (
+    SourceValidationAgent
+)
 
 from .task_state import (
     Task,
@@ -29,6 +32,7 @@ class DFOO:
         self.agents = {
             "intake_agent": IntakeAgent(),
             "research_agent": ResearchAgent(),
+            "source_validation_agent": SourceValidationAgent(),
         }
 
     def create_task(
@@ -152,6 +156,44 @@ class DFOO:
 
             await self.run_task(
                 research_task.id
+            )
+            research_task = (
+    self.task_repository.get_task(
+        research_task.id
+    )
+)
+
+        if research_task.status == TaskStatus.DONE:
+
+            research_output = (
+                research_task.output_data
+                .get("data", {})
+            )
+
+            validation_input = {
+                "manufacturer": product.get(
+                    "manufacturer"
+                ),
+                "mpn": product.get(
+                    "mpn"
+                ),
+                "sources": research_output.get(
+                    "sources",
+                    []
+                ),
+            }
+
+            validation_task = self.create_task(
+                investigation_id=investigation_id,
+                agent_name="source_validation_agent",
+                input_data=validation_input,
+                depends_on=[
+                    research_task.id
+                ],
+            )
+
+            await self.run_task(
+                validation_task.id
             )
 
         # -----------------------------------
