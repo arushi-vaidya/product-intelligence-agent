@@ -818,11 +818,26 @@ class DFOO:
 
         if final_task.status == TaskStatus.DONE:
 
-            investigation.status = TaskStatus.DONE
+            # -----------------------------------
+            # Save final product intelligence
+            # -----------------------------------
+
+            final_output = (
+                final_task.output_data
+                .get("data", {})
+            )
+
+            investigation.result = final_output
+
+            investigation.status = (
+                TaskStatus.DONE
+            )
 
         else:
 
-            investigation.status = TaskStatus.FAILED
+            investigation.status = (
+                TaskStatus.FAILED
+            )
 
         investigation.updated_at = datetime.utcnow()
 
