@@ -4,6 +4,7 @@ from datetime import datetime
 from app.agents.base import AgentInput
 from app.agents.intake_agent import IntakeAgent
 from app.agents.research_agent import ResearchAgent
+from app.agents.akgp_agent import AKGPAgent
 from app.agents.source_validation_agent import (
     SourceValidationAgent
 )
@@ -43,6 +44,7 @@ class DFOO:
             "document_agent": DocumentAgent(),
             "specification_agent": SpecificationAgent(),
             "conflict_agent": ConflictAgent(),
+            "akgp_agent": AKGPAgent(),
         }
 
     def create_task(
@@ -365,6 +367,70 @@ class DFOO:
 
         await self.run_task(
             conflict_task.id
+        )
+        conflict_task = (
+    self.task_repository.get_task(
+        conflict_task.id
+    )
+)
+
+        if conflict_task.status != TaskStatus.DONE:
+
+            investigation.status = (
+                TaskStatus.FAILED
+            )
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        # -----------------------------------
+        # 8. AKGP
+        # -----------------------------------
+
+        conflict_output = (
+            conflict_task.output_data
+            .get("data", {})
+        )
+
+        akgp_input = {
+            "manufacturer": product.get("manufacturer"),
+            "mpn": product.get("mpn"),
+
+            "specifications": (
+                conflict_output.get(
+                    "specifications",
+                    {}
+                )
+            ),
+
+            "conflicts": (
+                conflict_output.get(
+                    "conflicts",
+                    []
+                )
+            ),
+
+            "sources": research_output.get(
+                "sources",
+                []
+            ),
+        }
+
+        akgp_task = self.create_task(
+            investigation_id=investigation_id,
+            agent_name="akgp_agent",
+            input_data=akgp_input,
+            depends_on=[
+                conflict_task.id
+            ],
+        )
+
+        await self.run_task(
+            akgp_task.id
         )
 
         # -----------------------------------
