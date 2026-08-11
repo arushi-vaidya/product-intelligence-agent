@@ -17,6 +17,11 @@ class ProductIntelligenceAgent(Agent):
             "enrichment",
             {}
         )
+
+        evidence_validation = input.context.get(
+            "evidence_validation",
+            {}
+        )
         manufacturer = input.context.get(
             "manufacturer"
         )
@@ -83,6 +88,7 @@ class ProductIntelligenceAgent(Agent):
                 "industrial_electrical"
             ),
             "enrichment": enrichment,
+            "evidence_validation": evidence_validation,
             "family_specifications": (
                 family_specifications
             ),

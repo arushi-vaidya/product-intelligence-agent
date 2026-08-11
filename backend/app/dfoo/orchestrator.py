@@ -8,6 +8,7 @@ from app.agents.akgp_agent import AKGPAgent
 from app.agents.source_validation_agent import (
     SourceValidationAgent
 )
+from app.agents.evidence_validation_agent import EvidenceValidationAgent
 from app.agents.product_intelligence_agent import (
     ProductIntelligenceAgent
 )
@@ -57,6 +58,7 @@ class DFOO:
             "product_intelligence_agent": ProductIntelligenceAgent(),
             "canonical_resolution_agent": CanonicalResolutionAgent(),
             "enrichment_agent": EnrichmentAgent(),
+            "evidence_validation_agent": EvidenceValidationAgent(),
         }
 
     def create_task(
@@ -595,8 +597,9 @@ class DFOO:
         await self.run_task(
             enrichment_task.id
         )
+
        # -----------------------------------
-# 10. Product Intelligence
+# 10. Evidence Validation
 # -----------------------------------
 
         enrichment_task = (
@@ -607,9 +610,7 @@ class DFOO:
 
         if enrichment_task.status != TaskStatus.DONE:
 
-            investigation.status = (
-                TaskStatus.FAILED
-            )
+            investigation.status = TaskStatus.FAILED
 
             self.investigation_repository.update(
                 investigation
@@ -626,7 +627,103 @@ class DFOO:
 
 
         # -----------------------------------
-        # Build Product Intelligence input
+        # Build Evidence Validation input
+        # -----------------------------------
+
+        evidence_validation_input = {
+
+            "manufacturer": product.get(
+                "manufacturer"
+            ),
+
+            "mpn": product.get(
+                "mpn"
+            ),
+
+            "enrichment": (
+                enrichment_output.get(
+                    "enrichment",
+                    {}
+                )
+            ),
+
+            "canonical_product": (
+                canonical_output.get(
+                    "canonical_product",
+                    {}
+                )
+            ),
+
+            "sources": (
+                research_output.get(
+                    "sources",
+                    []
+                )
+            ),
+        }
+
+
+        # -----------------------------------
+        # Create Evidence Validation task
+        # -----------------------------------
+
+        evidence_validation_task = (
+            self.create_task(
+
+                investigation_id=investigation_id,
+
+                agent_name=(
+                    "evidence_validation_agent"
+                ),
+
+                input_data=(
+                    evidence_validation_input
+                ),
+
+                depends_on=[
+                    enrichment_task.id
+                ],
+            )
+        )
+
+
+        # -----------------------------------
+        # Execute Evidence Validation
+        # -----------------------------------
+
+        await self.run_task(
+            evidence_validation_task.id
+        )
+
+        evidence_validation_task = (
+            self.task_repository.get_task(
+                evidence_validation_task.id
+            )
+        )
+
+
+        if evidence_validation_task.status != TaskStatus.DONE:
+
+            investigation.status = (
+                TaskStatus.FAILED
+            )
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        # Get validation output
+        evidence_validation_output = (
+            evidence_validation_task.output_data
+            .get("data", {})
+        )
+
+
+        # -----------------------------------
+        # 11. Product Intelligence
         # -----------------------------------
 
         product_intelligence_input = {
@@ -653,10 +750,21 @@ class DFOO:
                 )
             ),
 
+            "evidence_validation": (
+                evidence_validation_output
+            ),
+
             "knowledge_graph": (
                 akgp_output.get(
                     "knowledge_graph",
                     {}
+                )
+            ),
+
+            "variants": (
+                akgp_output.get(
+                    "variants",
+                    []
                 )
             ),
 
@@ -687,7 +795,7 @@ class DFOO:
                 ),
 
                 depends_on=[
-                    enrichment_task.id
+                    evidence_validation_task.id
                 ],
             )
         )
@@ -701,15 +809,12 @@ class DFOO:
             product_intelligence_task.id
         )
 
-        # -----------------------------------
-        # 6. Determine final investigation status
-        # -----------------------------------
 
         final_task = (
-    self.task_repository.get_task(
-        product_intelligence_task.id
-    )
-)
+            self.task_repository.get_task(
+                product_intelligence_task.id
+            )
+        )
 
         if final_task.status == TaskStatus.DONE:
 
@@ -718,12 +823,6 @@ class DFOO:
         else:
 
             investigation.status = TaskStatus.FAILED
-
-        investigation.updated_at = datetime.utcnow()
-
-        self.investigation_repository.update(
-            investigation
-        )
 
         investigation.updated_at = datetime.utcnow()
 

@@ -1,10 +1,11 @@
 import json
 import os
 
+from dotenv import load_dotenv
 from google import genai
 
 from .base import Agent, AgentInput, AgentOutput
-from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -42,14 +43,42 @@ class EnrichmentAgent(Agent):
 
         evidence = []
 
+        # Source-level evidence
         for source in sources:
 
             evidence.append({
                 "source_id": source.get("id"),
                 "title": source.get("title"),
                 "url": source.get("url"),
-                "snippet": source.get("snippet", "")
+                "snippet": source.get(
+                    "snippet",
+                    ""
+                ),
             })
+
+        # -----------------------------------
+        # Add specification-level evidence
+        # -----------------------------------
+
+        specification_evidence = {}
+
+        family_specifications = (
+            canonical_product.get(
+                "family_specifications",
+                {}
+            )
+        )
+
+        for field, specification in (
+            family_specifications.items()
+        ):
+
+            specification_evidence[
+                field
+            ] = specification.get(
+                "evidence",
+                []
+            )
 
         # -----------------------------------
         # Build LLM prompt
@@ -61,6 +90,9 @@ You are an industrial product data enrichment agent.
 Your job is to create commerce-ready product content
 from VERIFIED product intelligence.
 
+You MUST ground every factual claim in the supplied
+canonical product data or evidence.
+
 PRODUCT:
 
 Manufacturer:
@@ -70,36 +102,118 @@ MPN:
 {mpn}
 
 CANONICAL PRODUCT:
-{json.dumps(canonical_product, indent=2)}
+{json.dumps(
+    canonical_product,
+    indent=2
+)}
 
-AVAILABLE SOURCES:
-{json.dumps(evidence, indent=2)}
+SOURCE EVIDENCE:
+{json.dumps(
+    evidence,
+    indent=2
+)}
 
-RULES:
+SPECIFICATION EVIDENCE:
+{json.dumps(
+    specification_evidence,
+    indent=2
+)}
+
+IMPORTANT RULES:
 
 1. Do NOT invent technical specifications.
-2. Do NOT guess missing values.
-3. Only mention technical facts supported by the
-   canonical product or supplied evidence.
-4. Keep family-level specifications separate from
-   variant-specific specifications.
-5. Generate useful commerce-oriented language.
-6. Product descriptions should be concise and factual.
-7. If an application is not explicitly supported,
-   phrase it cautiously or omit it.
-8. Return ONLY valid JSON.
 
-Return this exact structure:
+2. Do NOT guess missing values.
+
+3. Do NOT infer technical properties from incomplete
+   information.
+
+4. Every factual feature MUST reference one or more
+   source IDs from the supplied evidence.
+
+5. Every factual application MUST reference one or more
+   source IDs from the supplied evidence.
+
+6. Technical summary values MUST be supported by the
+   canonical product.
+
+7. Keep family-level specifications separate from
+   variant-specific specifications.
+
+8. Do NOT apply a family-level specification to a
+   variant unless the evidence explicitly supports it.
+
+9. Do NOT infer electrical characteristics such as
+   phase configuration, voltage, compatibility,
+   installation type, or application merely from
+   pole count or product name.
+
+10. If there is insufficient evidence for a claim,
+    omit the claim.
+
+11. Only use source IDs that actually appear in the
+    supplied evidence.
+
+12. Keep descriptions concise and factual.
+
+13. Search keywords may include manufacturer, product
+    family, MPN, category, and explicitly supported
+    technical terms.
+
+14. Do NOT put unsupported claims into search keywords.
+
+15. Return ONLY valid JSON.
+
+Return exactly this structure:
 
 {{
     "title": "...",
-    "short_description": "...",
-    "features": [],
-    "applications": [],
+
+    "short_description": {{
+        "text": "...",
+        "supported_by": []
+    }},
+
+    "features": [
+        {{
+            "text": "...",
+            "supported_by": []
+        }}
+    ],
+
+    "applications": [
+        {{
+            "text": "...",
+            "supported_by": []
+        }}
+    ],
+
     "search_keywords": [],
+
     "technical_summary": {{}},
-    "variant_descriptions": []
+
+    "variant_descriptions": [
+        {{
+            "mpn": "...",
+            "description": "...",
+            "supported_by": []
+        }}
+    ]
 }}
+
+IMPORTANT:
+
+The "supported_by" arrays must contain ONLY valid
+source IDs from the supplied evidence.
+
+Example:
+
+{{
+    "text": "Provides protection against overload currents.",
+    "supported_by": ["src_1"]
+}}
+
+If a claim cannot be supported, DO NOT generate it.
 """
 
         # -----------------------------------
@@ -131,10 +245,13 @@ Return this exact structure:
                 contents=prompt,
             )
 
-            raw_text = response.text.strip()
+            raw_text = (
+                response.text.strip()
+            )
 
-            # Remove markdown fences if model
-            # happens to return them.
+            # -----------------------------------
+            # Remove markdown fences
+            # -----------------------------------
 
             if raw_text.startswith(
                 "```json"
@@ -154,6 +271,24 @@ Return this exact structure:
                     )
                     .strip()
                 )
+
+            elif raw_text.startswith(
+                "```"
+            ):
+
+                raw_text = (
+                    raw_text
+                    .replace(
+                        "```",
+                        "",
+                        1
+                    )
+                    .strip()
+                )
+
+            # -----------------------------------
+            # Parse JSON
+            # -----------------------------------
 
             enrichment = json.loads(
                 raw_text
