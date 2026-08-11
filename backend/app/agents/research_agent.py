@@ -1,22 +1,38 @@
 from .base import Agent, AgentInput, AgentOutput
+from app.services.source_discovery import (
+    SourceDiscoveryService
+)
 
 
 class ResearchAgent(Agent):
 
     name = "research_agent"
 
+    def __init__(self):
+
+        self.source_discovery = (
+            SourceDiscoveryService()
+        )
+
     async def run(
         self,
         input: AgentInput
     ) -> AgentOutput:
 
-        # IntakeAgent output is passed directly
-        # as the context to ResearchAgent.
-        manufacturer = input.context.get("manufacturer")
-        mpn = input.context.get("mpn")
-        category = input.context.get("category_guess")
+        manufacturer = (
+            input.context.get("manufacturer")
+        )
+
+        mpn = (
+            input.context.get("mpn")
+        )
+
+        category = (
+            input.context.get("category_guess")
+        )
 
         if not manufacturer or not mpn:
+
             return AgentOutput(
                 success=False,
                 data={},
@@ -25,24 +41,20 @@ class ResearchAgent(Agent):
                 ]
             )
 
-        # Mock sources for now.
-        # We will replace these with real web research later.
-        sources = [
-            {
-                "id": "mock_manufacturer_page",
-                "url": "https://example.com/product",
-                "source_type": "manufacturer_page",
-                "authority_tier": 1,
-                "title": f"{manufacturer} {mpn} Product Page"
-            },
-            {
-                "id": "mock_datasheet",
-                "url": "https://example.com/datasheet.pdf",
-                "source_type": "manufacturer_datasheet",
-                "authority_tier": 1,
-                "title": f"{manufacturer} {mpn} Datasheet"
-            }
-        ]
+        print(
+            f"[RESEARCH] Researching "
+            f"{manufacturer} {mpn}"
+        )
+
+        # Ask the source discovery service
+        # to find relevant sources.
+
+        sources = await (
+            self.source_discovery.search_product(
+                manufacturer=manufacturer,
+                mpn=mpn,
+            )
+        )
 
         return AgentOutput(
             success=True,
@@ -50,8 +62,8 @@ class ResearchAgent(Agent):
                 "product": {
                     "manufacturer": manufacturer,
                     "mpn": mpn,
-                    "category": category
+                    "category": category,
                 },
-                "sources": sources
+                "sources": sources,
             }
         )
