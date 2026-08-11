@@ -7,6 +7,7 @@ app = FastAPI(
     title="Industrial Product Intelligence"
 )
 
+
 dfoo = DFOO()
 
 
@@ -61,19 +62,35 @@ async def get_investigation(
         )
     )
 
+    # Find the final Product Intelligence task
+    final_task = next(
+        (
+            task
+            for task in tasks
+            if task.agent_name
+            == "product_intelligence_agent"
+        ),
+        None,
+    )
+
+    # Pipeline has not reached final agent yet
+    if final_task is None:
+
+        return {
+            "investigation_id": investigation.id,
+            "status": investigation.status.value,
+            "input": investigation.input_data,
+            "result": None,
+        }
+
+    output = final_task.output_data or {}
+
     return {
         "investigation_id": investigation.id,
         "status": investigation.status.value,
         "input": investigation.input_data,
-        "tasks": [
-            {
-                "id": task.id,
-                "agent": task.agent_name,
-                "status": task.status.value,
-                "attempts": task.attempts,
-                "depends_on": task.depends_on,
-                "output": task.output_data,
-            }
-            for task in tasks
-        ],
+        "result": output.get(
+            "data",
+            {}
+        ),
     }

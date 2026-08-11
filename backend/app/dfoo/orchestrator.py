@@ -14,6 +14,9 @@ from app.agents.product_intelligence_agent import (
 from app.agents.document_agent import (
     DocumentAgent
 )
+from app.agents.canonical_resolution_agent import (
+    CanonicalResolutionAgent
+)
 
 from .task_state import (
     Task,
@@ -49,6 +52,7 @@ class DFOO:
             "conflict_agent": ConflictAgent(),
             "akgp_agent": AKGPAgent(),
             "product_intelligence_agent": ProductIntelligenceAgent(),
+            "canonical_resolution_agent": CanonicalResolutionAgent(),
         }
 
     def create_task(
@@ -437,6 +441,85 @@ class DFOO:
             akgp_task.id
         )
         # -----------------------------------
+# 9. Canonical Product Resolution
+# -----------------------------------
+
+        akgp_task = self.task_repository.get_task(
+            akgp_task.id
+        )
+
+        if akgp_task.status != TaskStatus.DONE:
+
+            investigation.status = (
+                TaskStatus.FAILED
+            )
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        akgp_output = (
+            akgp_task.output_data
+            .get("data", {})
+        )
+
+
+        canonical_input = {
+
+            "manufacturer": product.get(
+                "manufacturer"
+            ),
+
+            "mpn": product.get(
+                "mpn"
+            ),
+
+            "specifications": (
+                conflict_output.get(
+                    "specifications",
+                    {}
+                )
+            ),
+
+            "variants": (
+                akgp_output.get(
+                    "variants",
+                    []
+                )
+            ),
+
+            "conflict_resolutions": (
+                akgp_output.get(
+                    "conflict_resolutions",
+                    []
+                )
+            ),
+        }
+
+
+        canonical_task = self.create_task(
+
+            investigation_id=investigation_id,
+
+            agent_name=(
+                "canonical_resolution_agent"
+            ),
+
+            input_data=canonical_input,
+
+            depends_on=[
+                akgp_task.id
+            ],
+        )
+
+
+        await self.run_task(
+            canonical_task.id
+        )
+        # -----------------------------------
 # 9. Product Intelligence
 # -----------------------------------
 
@@ -466,6 +549,31 @@ class DFOO:
         # Build Product Intelligence input
         # -----------------------------------
 
+        canonical_task = (
+    self.task_repository.get_task(
+        canonical_task.id
+    )
+)
+
+        if canonical_task.status != TaskStatus.DONE:
+
+            investigation.status = (
+                TaskStatus.FAILED
+            )
+
+            self.investigation_repository.update(
+                investigation
+            )
+
+            return investigation
+
+
+        canonical_output = (
+            canonical_task.output_data
+            .get("data", {})
+        )
+
+
         product_intelligence_input = {
 
             "manufacturer": product.get(
@@ -476,9 +584,9 @@ class DFOO:
                 "mpn"
             ),
 
-            "specifications": (
-                conflict_output.get(
-                    "specifications",
+            "canonical_product": (
+                canonical_output.get(
+                    "canonical_product",
                     {}
                 )
             ),
@@ -487,13 +595,6 @@ class DFOO:
                 akgp_output.get(
                     "knowledge_graph",
                     {}
-                )
-            ),
-
-            "variants": (
-                akgp_output.get(
-                    "variants",
-                    []
                 )
             ),
 
@@ -511,19 +612,11 @@ class DFOO:
         # -----------------------------------
 
         product_intelligence_task = self.create_task(
-
             investigation_id=investigation_id,
-
-            agent_name=(
-                "product_intelligence_agent"
-            ),
-
-            input_data=(
-                product_intelligence_input
-            ),
-
+            agent_name="product_intelligence_agent",
+            input_data=product_intelligence_input,
             depends_on=[
-                akgp_task.id
+                canonical_task.id
             ],
         )
 
