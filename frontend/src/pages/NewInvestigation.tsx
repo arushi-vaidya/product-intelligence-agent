@@ -188,6 +188,17 @@ function NewInvestigation() {
               PRODUCT IDENTIFICATION
             </div>
 
+            <div className="target-intro">
+              <h2>Define the target</h2>
+              <p>
+                Provide the manufacturer and the
+                product / MPN identifier. The
+                pipeline runs 11 agents to
+                assemble the final product
+                intelligence.
+              </p>
+            </div>
+
             <label>
               Manufacturer
             </label>
@@ -269,7 +280,33 @@ function NewInvestigation() {
   );
 }
 
+// Backend agent names don't always map 1:1 onto
+// the human-readable stage labels (e.g. the
+// "document_agent" powers the "Document
+// Extraction" stage), so we use an explicit
+// lookup instead of fuzzy substring matching.
+const AGENT_TO_STAGE: Record<string, string> = {
+  intake_agent: "Intake",
+  research_agent: "Research",
+  source_validation_agent: "Source Validation",
+  document_agent: "Document Extraction",
+  specification_agent: "Specification Extraction",
+  conflict_agent: "Conflict Resolution",
+  akgp_agent: "AKGP",
+  canonical_resolution_agent: "Canonical Resolution",
+  enrichment_agent: "Enrichment",
+  evidence_validation_agent: "Evidence Validation",
+  product_intelligence_agent: "Product Intelligence",
+};
+
 function getStageIndex(agent: string) {
+  const stage = AGENT_TO_STAGE[agent.toLowerCase()];
+
+  if (stage) {
+    return stages.indexOf(stage);
+  }
+
+  // Fallback for any unrecognized agent name.
   const normalized = agent
     .toLowerCase()
     .replace(/_agent$/, "")
@@ -277,9 +314,8 @@ function getStageIndex(agent: string) {
 
   return stages.findIndex(
     (stage) =>
-      normalized.includes(
-        stage.toLowerCase()
-      )
+      normalized.includes(stage.toLowerCase()) ||
+      stage.toLowerCase().includes(normalized)
   );
 }
 

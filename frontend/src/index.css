@@ -287,6 +287,24 @@ button {
   background: rgba(255, 255, 255, 0.025);
 }
 
+.target-intro {
+  margin-top: 14px;
+}
+
+.target-intro h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+  letter-spacing: -0.6px;
+  color: #fff;
+}
+
+.target-intro p {
+  margin: 0;
+  color: #858c99;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
 .investigation-form-panel label {
   display: block;
   margin: 28px 0 9px;

@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import datetime
 
@@ -116,7 +117,7 @@ class DFOO:
         investigation = Investigation(
             id=investigation_id,
             input_data=product,
-            status=TaskStatus.PENDING,
+            status=TaskStatus.RUNNING,
         )
 
         self.investigation_repository.create(
@@ -127,6 +128,43 @@ class DFOO:
             f"[DFOO] Investigation "
             f"{investigation_id} created"
         )
+
+        # -----------------------------------
+        # 2. Run the pipeline in the background.
+        #
+        #    The pipeline itself makes many
+        #    sequential agent calls and can take
+        #    a while, so we must not await it here.
+        #    Awaiting it would block this request
+        #    until the ENTIRE investigation is
+        #    finished, which means the client would
+        #    never see incremental task/stage
+        #    progress while polling.
+        # -----------------------------------
+
+        asyncio.create_task(
+            self._run_pipeline(
+                investigation_id=investigation_id,
+                product=product,
+            )
+        )
+
+        return investigation
+
+    async def _run_pipeline(
+        self,
+        investigation_id: str,
+        product: dict,
+    ):
+
+        investigation = (
+            self.investigation_repository.get(
+                investigation_id
+            )
+        )
+
+        if investigation is None:
+            return
 
         # -----------------------------------
         # 2. Create Intake task
