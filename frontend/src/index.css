@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 
 :root {
   font-family: 'Inter', sans-serif;
@@ -6,6 +6,23 @@
   background: #07090d;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+
+  /* ---- design tokens ---- */
+  --bg: #07090d;
+  --text: #f5f7fa;
+  --muted: #8d94a3;
+  --muted-2: #626a78;
+  --border: rgba(255, 255, 255, 0.08);
+
+  --indigo: #7784ff;
+  --indigo-strong: #6672ff;
+  --accent: #65e4b0;
+  --purple: #c18cff;
+  --blue: #77a9ff;
+
+  --success: #48d597;
+  --warning: #ffb446;
+  --danger: #ff5a5a;
 }
 
 * {
@@ -115,84 +132,6 @@ button {
   color: #fff;
 }
 
-
-/* =========================================
-   HOME
-========================================= */
-
-.home-page {
-  position: relative;
-  min-height: 100vh;
-  overflow: hidden;
-}
-
-.home-grid {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.18;
-
-  background-image:
-    linear-gradient(
-      rgba(255, 255, 255, 0.025) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.025) 1px,
-      transparent 1px
-    );
-
-  background-size: 60px 60px;
-
-  mask-image: linear-gradient(
-    to bottom,
-    black,
-    transparent 80%
-  );
-}
-
-.hero {
-  position: relative;
-  width: min(1280px, calc(100% - 64px));
-  min-height: 650px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  align-items: center;
-  gap: 50px;
-}
-
-.hero-content {
-  position: relative;
-  z-index: 2;
-}
-
-.hero h1 {
-  margin: 22px 0;
-  font-size: clamp(48px, 6vw, 82px);
-  line-height: 0.98;
-  letter-spacing: -4px;
-  font-weight: 600;
-}
-
-.hero h1 span {
-  color: #7c86ff;
-}
-
-.hero p {
-  max-width: 600px;
-  margin: 0 0 36px;
-  color: #8d94a3;
-  font-size: 17px;
-  line-height: 1.7;
-}
-
-.hero-actions {
-  display: flex;
-  gap: 12px;
-}
-
 .primary-button,
 .secondary-button {
   display: inline-flex;
@@ -234,142 +173,6 @@ button {
 .full-width {
   width: 100%;
   margin-top: 28px;
-}
-
-
-/* =========================================
-   HERO NETWORK
-========================================= */
-
-.hero-network {
-  position: relative;
-  width: 500px;
-  height: 500px;
-  justify-self: center;
-}
-
-.network-orbit {
-  position: absolute;
-  border: 1px solid rgba(116, 128, 255, 0.12);
-  border-radius: 50%;
-  inset: 80px;
-  animation: rotate 20s linear infinite;
-}
-
-.orbit-two {
-  inset: 135px;
-  animation-direction: reverse;
-  animation-duration: 15s;
-}
-
-.network-node {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  background: rgba(13, 16, 24, 0.85);
-  color: #8e95a3;
-  font-size: 10px;
-  letter-spacing: 1px;
-  backdrop-filter: blur(12px);
-}
-
-.center-node {
-  top: 205px;
-  left: 175px;
-  width: 150px;
-  height: 75px;
-  flex-direction: column;
-  color: #7784ff;
-  border-color: rgba(119, 132, 255, 0.35);
-  box-shadow:
-    0 0 50px rgba(91, 102, 255, 0.12);
-}
-
-.center-node strong {
-  margin-top: 6px;
-  color: #fff;
-  font-family: 'DM Mono', monospace;
-  font-size: 13px;
-  letter-spacing: 0;
-}
-
-.node-one {
-  top: 75px;
-  left: 190px;
-}
-
-.node-two {
-  right: 35px;
-  top: 235px;
-}
-
-.node-three {
-  left: 45px;
-  top: 235px;
-}
-
-.node-four {
-  bottom: 70px;
-  left: 195px;
-}
-
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-
-/* =========================================
-   PROCESS STRIP
-========================================= */
-
-.process-strip {
-  position: relative;
-  width: min(1100px, calc(100% - 64px));
-  margin: 0 auto 50px;
-  padding: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.process-item {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-}
-
-.process-item > span {
-  font-family: 'DM Mono', monospace;
-  color: #555c69;
-  font-size: 11px;
-}
-
-.process-item strong {
-  font-size: 13px;
-}
-
-.process-item p {
-  margin: 4px 0 0;
-  color: #666e7c;
-  font-size: 11px;
-}
-
-.process-line {
-  width: 50px;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.1);
 }
 
 

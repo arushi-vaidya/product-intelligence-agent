@@ -13,7 +13,7 @@ import {
   getInvestigation,
 } from "../services/api";
 
-const stages = [
+export const stages = [
   "Intake",
   "Research",
   "Source Validation",

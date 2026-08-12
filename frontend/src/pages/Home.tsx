@@ -1,13 +1,53 @@
 import { motion } from "framer-motion";
-import { ArrowRight, History, Plus, Network } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Cpu,
+  GitMerge,
+  Network,
+  ScanSearch,
+} from "lucide-react";
+import { Fragment } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { stages } from "./NewInvestigation";
+import "./home.css";
+
+const features = [
+  {
+    icon: ScanSearch,
+    title: "Source Discovery",
+    text: "Multi-agent research across datasheets, catalogs and distributor listings.",
+  },
+  {
+    icon: Cpu,
+    title: "Spec Extraction",
+    text: "Structured technical attributes pulled from HTML & PDF evidence.",
+  },
+  {
+    icon: GitMerge,
+    title: "Conflict Resolution",
+    text: "Distinguishes true contradictions from real variant differences.",
+  },
+  {
+    icon: Network,
+    title: "Knowledge Graph",
+    text: "AKGP entities & relationships mapped for every product family.",
+  },
+];
 
 function Home() {
   const navigate = useNavigate();
 
   return (
     <main className="home-page">
-      <div className="home-grid" />
+      <div className="home-bg">
+        <div className="home-bg-glow-a" />
+        <div className="home-bg-glow-b" />
+        <div className="home-bg-grid" />
+        <div className="home-bg-scanline" />
+        <div className="home-bg-noise" />
+      </div>
 
       <section className="hero">
         <motion.div
@@ -16,34 +56,51 @@ function Home() {
           transition={{ duration: 0.6 }}
           className="hero-content"
         >
-          <div className="eyebrow">
-            <Network size={14} />
-            INDUSTRIAL INTELLIGENCE ENGINE
+          <div className="hero-badge">
+            <span className="hero-badge-dot" />
+            {stages.length}-STAGE DFOO INVESTIGATION PIPELINE
           </div>
 
           <h1>
-            From fragmented data
-            <br />
-            to <span>product truth.</span>
+            Turn a name &amp;{" "}
+            <span className="highlight">manufacturer</span>{" "}
+            into product intelligence.
           </h1>
 
-          <p>
-            Research, validate, resolve and enrich industrial
-            product information into structured, commerce-ready
-            intelligence.
+          <p className="hero-description">
+            Enter a manufacturer and MPN. Our agent pipeline
+            researches, validates, resolves and enriches it
+            into commerce-ready specifications, variants and
+            a knowledge graph.
           </p>
 
           <div className="hero-actions">
             <button
-              className="primary-button"
+              className="hero-cta"
               onClick={() => navigate("/investigate")}
             >
-              <Plus size={18} />
-              New Investigation
-              <ArrowRight size={17} />
+              Start New Investigation
+              <ArrowUpRight size={17} strokeWidth={2.4} />
             </button>
 
-            
+            <div className="hero-stats">
+              <span>
+                <strong>{stages.length}</strong> agents
+              </span>
+
+              <span className="hero-stats-divider" />
+
+              <span>
+                <strong>{features.length + 3}</strong> intel
+                modules
+              </span>
+
+              <span className="hero-stats-divider" />
+
+              <span>
+                <strong>0</strong> setup
+              </span>
+            </div>
           </div>
         </motion.div>
 
@@ -61,77 +118,68 @@ function Home() {
             <strong>iC60N C20</strong>
           </div>
 
-          <div className="network-node node-one">
-            SOURCE
-          </div>
-
-          <div className="network-node node-two">
-            VARIANT
-          </div>
-
+          <div className="network-node node-one">SOURCE</div>
+          <div className="network-node node-two">VARIANT</div>
           <div className="network-node node-three">
             EVIDENCE
           </div>
-
-          <div className="network-node node-four">
-            SPECS
-          </div>
+          <div className="network-node node-four">SPECS</div>
         </motion.div>
       </section>
 
-      <section className="process-strip">
-        <ProcessItem
-          number="01"
-          title="Research"
-          text="Discover product sources"
-        />
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="feature-strip"
+      >
+        {features.map((feature) => (
+          <div className="feature-item" key={feature.title}>
+            <div className="feature-icon">
+              <feature.icon size={17} strokeWidth={2} />
+            </div>
 
-        <div className="process-line" />
+            <h3>{feature.title}</h3>
+            <p>{feature.text}</p>
+          </div>
+        ))}
+      </motion.section>
 
-        <ProcessItem
-          number="02"
-          title="Validate"
-          text="Evaluate source evidence"
-        />
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="pipeline-strip-section"
+      >
+        <div className="pipeline-strip-label">THE PIPELINE</div>
 
-        <div className="process-line" />
+        <div className="pipeline-chips">
+          {stages.map((stage, index) => (
+            <Fragment key={stage}>
+              <div className="pipeline-chip">
+                <span className="pipeline-chip-number">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                {stage}
+              </div>
 
-        <ProcessItem
-          number="03"
-          title="Resolve"
-          text="Identify variants & conflicts"
-        />
+              {index !== stages.length - 1 && (
+                <ArrowRight
+                  className="pipeline-arrow"
+                  size={13}
+                />
+              )}
+            </Fragment>
+          ))}
+        </div>
+      </motion.section>
 
-        <div className="process-line" />
-
-        <ProcessItem
-          number="04"
-          title="Enrich"
-          text="Generate commerce intelligence"
-        />
-      </section>
+      <footer className="home-footer">
+        <span>
+          AKGP.INTEL &mdash; INDUSTRIAL PRODUCT INTELLIGENCE
+        </span>
+      </footer>
     </main>
-  );
-}
-
-function ProcessItem({
-  number,
-  title,
-  text,
-}: {
-  number: string;
-  title: string;
-  text: string;
-}) {
-  return (
-    <div className="process-item">
-      <span>{number}</span>
-
-      <div>
-        <strong>{title}</strong>
-        <p>{text}</p>
-      </div>
-    </div>
   );
 }
 

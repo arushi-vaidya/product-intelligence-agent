@@ -2,14 +2,15 @@ import {
   useEffect,
   useMemo,
   useState,
+  type CSSProperties,
 } from "react";
 import {
   useNavigate,
   useParams,
 } from "react-router-dom";
 
-import AKGPGraph from "../components/Graph/AKGPGraph";
-import "./Results.css";
+import AKGPGraph from "../components/graph/AKGPGraph";
+import "./results.css";
 
 /* ============================================================
    TYPES
@@ -749,7 +750,16 @@ export default function Results() {
 
           <div className="hero-confidence">
 
-            <div className="confidence-ring">
+            <div
+              className="confidence-ring"
+              style={
+                {
+                  "--pct": confidence
+                    ? Math.round(confidence * 100)
+                    : 0,
+                } as CSSProperties
+              }
+            >
 
               <strong>
                 {formatConfidence(
