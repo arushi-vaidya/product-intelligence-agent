@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.dfoo.orchestrator import DFOO
 
@@ -24,6 +25,26 @@ app = FastAPI(
     ),
 )
 
+
+# ==========================================
+# CORS
+# ==========================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ==========================================
+# DFOO
+# ==========================================
 
 dfoo = DFOO()
 
@@ -97,7 +118,7 @@ async def get_investigation(
         )
 
     # --------------------------------------
-    # Get all tasks
+    # Get tasks
     # --------------------------------------
 
     tasks = (
@@ -108,20 +129,7 @@ async def get_investigation(
     )
 
     # --------------------------------------
-    # Unwrap final product intelligence
-    # --------------------------------------
-    #
-    # The final ProductIntelligenceAgent
-    # returns:
-    #
-    # {
-    #     "product_intelligence": {
-    #         ...
-    #     }
-    # }
-    #
-    # The API response model expects the
-    # inner object directly.
+    # Get result
     # --------------------------------------
 
     result = None
@@ -134,7 +142,7 @@ async def get_investigation(
         )
 
     # --------------------------------------
-    # Build API response
+    # Build response
     # --------------------------------------
 
     return InvestigationResponse(
@@ -193,7 +201,7 @@ async def get_investigation_result(
         )
 
     # --------------------------------------
-    # Check whether result exists
+    # Check result
     # --------------------------------------
 
     if not investigation.result:
@@ -223,7 +231,7 @@ async def get_investigation_result(
         )
 
     # --------------------------------------
-    # Return clean product intelligence
+    # Return clean result
     # --------------------------------------
 
     return ProductIntelligenceResponse(
