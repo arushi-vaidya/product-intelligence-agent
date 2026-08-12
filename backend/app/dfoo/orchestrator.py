@@ -812,6 +812,11 @@ class DFOO:
                     []
                 )
             ),
+
+            "sources": research_output.get(
+                "sources",
+                []
+            ),
         }
 
 

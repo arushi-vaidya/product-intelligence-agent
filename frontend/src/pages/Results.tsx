@@ -23,17 +23,37 @@ import {
 } from "lucide-react";
 
 import AKGPGraph from "../components/graph/AKGPGraph";
+import SourceLink, {
+  SourceTagList,
+  buildSourceMap,
+  type SourceRecord,
+} from "../components/SourceLink";
 import "./results.css";
 
 /* ============================================================
    TYPES
    ============================================================ */
 
+type SpecificationEvidence = {
+  source_id?: string;
+  source_url?: string | null;
+  source_title?: string | null;
+  value?: string | number | null;
+  unit?: string | null;
+  text?: string | null;
+};
+
 type Specification = {
   value?: string | number | null;
   unit?: string | null;
   confidence?: number | null;
   quality_status?: string | null;
+  evidence?: SpecificationEvidence[];
+};
+
+type EnrichmentItem = {
+  text: string;
+  supportedBy: string[];
 };
 
 type Variant = {
@@ -118,6 +138,8 @@ type ProductIntelligence = {
   commerce_readiness?: {
     status?: string;
   };
+
+  sources?: SourceRecord[];
 };
 
 
@@ -259,6 +281,70 @@ function normalizeList(
   return [
     toDisplayText(value),
   ];
+}
+
+
+function normalizeEnrichmentItems(
+  value: unknown
+): EnrichmentItem[] {
+  if (!value) {
+    return [];
+  }
+
+  const items = Array.isArray(value)
+    ? value
+    : [value];
+
+  return items
+    .map((item) => {
+      if (typeof item === "string") {
+        return {
+          text: item,
+          supportedBy: [],
+        };
+      }
+
+      if (
+        typeof item !== "object" ||
+        item === null
+      ) {
+        return {
+          text: toDisplayText(item),
+          supportedBy: [],
+        };
+      }
+
+      const record = item as Record<
+        string,
+        unknown
+      >;
+
+      const text =
+        toDisplayText(
+          record.text ??
+            record.description ??
+            record.value ??
+            item
+        );
+
+      const supportedBy = Array.isArray(
+        record.supported_by
+      )
+        ? record.supported_by.filter(
+            (
+              sourceId
+            ): sourceId is string =>
+              typeof sourceId ===
+              "string"
+          )
+        : [];
+
+      return {
+        text,
+        supportedBy,
+      };
+    })
+    .filter((item) => item.text);
 }
 
 
@@ -498,7 +584,7 @@ export default function Results() {
   const features =
     useMemo(
       () =>
-        normalizeList(
+        normalizeEnrichmentItems(
           enrichment.features
         ),
       [enrichment.features]
@@ -508,7 +594,7 @@ export default function Results() {
   const applications =
     useMemo(
       () =>
-        normalizeList(
+        normalizeEnrichmentItems(
           enrichment.applications
         ),
       [enrichment.applications]
@@ -535,19 +621,50 @@ export default function Results() {
     );
 
 
+  const sourceMap =
+    useMemo(
+      () =>
+        buildSourceMap(
+          result?.sources,
+          specifications
+        ),
+      [result?.sources, specifications]
+    );
+
+
   const sources =
     useMemo(() => {
 
-      const all = variants.flatMap(
+      const fromVariants = variants.flatMap(
         (variant) =>
           variant.sources ?? []
       );
 
-      return Array.from(
-        new Set(all)
+      const fromEvidence = Object.values(
+        specifications
+      ).flatMap(
+        (specification) =>
+          specification.evidence?.map(
+            (item) => item.source_id
+          ) ?? []
+      ).filter(
+        (
+          sourceId
+        ): sourceId is string =>
+          typeof sourceId === "string"
       );
 
-    }, [variants]);
+      return Array.from(
+        new Set([
+          ...fromVariants,
+          ...fromEvidence,
+          ...(result?.sources?.map(
+            (source) => source.id
+          ) ?? []),
+        ])
+      );
+
+    }, [variants, specifications, result?.sources]);
 
 
   const variantDescriptions =
@@ -1039,7 +1156,16 @@ export default function Results() {
 
                             <li key={index}>
                               <span>✓</span>
-                              {feature}
+                              <div className="enrichment-item">
+                                <span>{feature.text}</span>
+                                {feature.supportedBy.length ? (
+                                  <SourceTagList
+                                    sourceIds={feature.supportedBy}
+                                    sourceMap={sourceMap}
+                                    className="inline-source-tags"
+                                  />
+                                ) : null}
+                              </div>
                             </li>
 
                           )
@@ -1071,7 +1197,16 @@ export default function Results() {
 
                             <li key={index}>
                               <span>→</span>
-                              {application}
+                              <div className="enrichment-item">
+                                <span>{application.text}</span>
+                                {application.supportedBy.length ? (
+                                  <SourceTagList
+                                    sourceIds={application.supportedBy}
+                                    sourceMap={sourceMap}
+                                    className="inline-source-tags"
+                                  />
+                                ) : null}
+                              </div>
                             </li>
 
                           )
@@ -1105,11 +1240,13 @@ export default function Results() {
 
                     <ul className="sidebar-source-list">
 
-                      {sources.map((source) => (
+                      {sources.map((sourceId) => (
 
-                        <li key={source}>
-                          <FileText size={14} strokeWidth={2} />
-                          {source}
+                        <li key={sourceId}>
+                          <SourceLink
+                            sourceId={sourceId}
+                            sourceMap={sourceMap}
+                          />
                         </li>
 
                       ))}
@@ -1210,6 +1347,39 @@ export default function Results() {
 
                       </div>
 
+                      {specification?.evidence?.length ? (
+
+                        <div className="spec-sources">
+
+                          {Array.from(
+                            new Set(
+                              specification.evidence
+                                .map(
+                                  (evidence) =>
+                                    evidence.source_id
+                                )
+                                .filter(
+                                  (
+                                    sourceId
+                                  ): sourceId is string =>
+                                    typeof sourceId ===
+                                    "string"
+                                )
+                            )
+                          ).map((sourceId) => (
+                            <SourceLink
+                              key={sourceId}
+                              sourceId={sourceId}
+                              sourceMap={sourceMap}
+                              className="spec-source-link"
+                              externalIcon
+                            />
+                          ))}
+
+                        </div>
+
+                      ) : null}
+
                     </div>
 
                   )
@@ -1294,13 +1464,10 @@ export default function Results() {
 
                     {variant.sources?.length ? (
 
-                      <div className="source-tags">
-
-                        {variant.sources.map((source) => (
-                          <span key={source}>{source}</span>
-                        ))}
-
-                      </div>
+                      <SourceTagList
+                        sourceIds={variant.sources}
+                        sourceMap={sourceMap}
+                      />
 
                     ) : null}
 

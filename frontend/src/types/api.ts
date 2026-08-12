@@ -32,16 +32,55 @@ export interface InvestigationCreatedResponse {
   status: string;
 }
 
+export interface InvestigationSummary {
+  investigation_id: string;
+  status: string;
+  manufacturer: string;
+  mpn: string;
+  product_category?: string | null;
+  source_count: number;
+  variant_count: number;
+  commerce_readiness?: string | null;
+  created_at: string;
+}
+
+export interface InvestigationListResponse {
+  investigations: InvestigationSummary[];
+}
+
 
 // ==========================================
 // SPECIFICATIONS
 // ==========================================
+
+export interface SpecificationEvidence {
+  source_id?: string;
+  source_url?: string | null;
+  source_title?: string | null;
+  value?: string | number | null;
+  unit?: string | null;
+  text?: string | null;
+}
 
 export interface Specification {
   value: string | number | null;
   unit?: string | null;
   confidence?: number | null;
   quality_status?: string | null;
+  evidence?: SpecificationEvidence[];
+}
+
+
+// ==========================================
+// SOURCES
+// ==========================================
+
+export interface ProductSource {
+  id: string;
+  url?: string | null;
+  title?: string | null;
+  source_type?: string | null;
+  authority_tier?: number | null;
 }
 
 
@@ -210,6 +249,8 @@ export interface ProductIntelligence {
 
   commerce_readiness:
     CommerceReadiness;
+
+  sources?: ProductSource[];
 }
 
 

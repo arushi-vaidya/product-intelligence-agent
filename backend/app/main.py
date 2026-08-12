@@ -1,3 +1,5 @@
+from typing import Any, Optional
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,7 +8,9 @@ from app.dfoo.orchestrator import DFOO
 from app.schemas.api import (
     InvestigationRequest,
     InvestigationCreatedResponse,
+    InvestigationListResponse,
     InvestigationResponse,
+    InvestigationSummary,
     ProductIntelligenceResponse,
     TaskResponse,
 )
@@ -49,6 +53,78 @@ app.add_middleware(
 dfoo = DFOO()
 
 
+def build_investigation_summary(
+    investigation,
+) -> InvestigationSummary:
+    input_data = investigation.input_data or {}
+    product_intelligence: dict[str, Any] = {}
+
+    if investigation.result:
+        product_intelligence = (
+            investigation.result.get(
+                "product_intelligence",
+                investigation.result,
+            )
+            or {}
+        )
+
+    sources = product_intelligence.get(
+        "sources",
+        [],
+    )
+    variants = product_intelligence.get(
+        "variants",
+        [],
+    )
+
+    source_ids: set[str] = set()
+
+    for source in sources:
+        if isinstance(source, dict):
+            source_id = source.get("id")
+
+            if source_id:
+                source_ids.add(source_id)
+
+    for variant in variants:
+        if not isinstance(variant, dict):
+            continue
+
+        for source_id in variant.get(
+            "sources",
+            [],
+        ):
+            if source_id:
+                source_ids.add(source_id)
+
+    commerce_readiness = product_intelligence.get(
+        "commerce_readiness",
+        {},
+    )
+
+    return InvestigationSummary(
+        investigation_id=investigation.id,
+        status=investigation.status.value,
+        manufacturer=input_data.get(
+            "manufacturer",
+            "",
+        ),
+        mpn=input_data.get(
+            "mpn",
+            "",
+        ),
+        product_category=product_intelligence.get(
+            "product_category"
+        ),
+        source_count=len(source_ids),
+        variant_count=len(variants),
+        commerce_readiness=commerce_readiness.get(
+            "status"
+        ),
+        created_at=investigation.created_at,
+    )
+
+
 # ==========================================
 # ROOT
 # ==========================================
@@ -85,6 +161,48 @@ async def investigate(
     return InvestigationCreatedResponse(
         investigation_id=investigation.id,
         status=investigation.status.value,
+    )
+
+
+# ==========================================
+# LIST INVESTIGATIONS
+# ==========================================
+
+@app.get(
+    "/investigations",
+    response_model=InvestigationListResponse,
+)
+async def list_investigations(
+    q: Optional[str] = None,
+):
+
+    investigations = (
+        dfoo.investigation_repository.list_all()
+    )
+
+    summaries = [
+        build_investigation_summary(
+            investigation
+        )
+        for investigation in investigations
+    ]
+
+    if q:
+        query = q.strip().lower()
+
+        if query:
+            summaries = [
+                summary
+                for summary in summaries
+                if query in summary.manufacturer.lower()
+                or query in summary.mpn.lower()
+                or query in (
+                    summary.product_category or ""
+                ).lower()
+            ]
+
+    return InvestigationListResponse(
+        investigations=summaries
     )
 
 

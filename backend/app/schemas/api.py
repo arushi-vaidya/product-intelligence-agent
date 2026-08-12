@@ -1,6 +1,7 @@
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 
 class InvestigationRequest(BaseModel):
@@ -20,6 +21,24 @@ class InvestigationRequest(BaseModel):
 class InvestigationCreatedResponse(BaseModel):
     investigation_id: str
     status: str
+
+
+class InvestigationSummary(BaseModel):
+    investigation_id: str
+    status: str
+    manufacturer: str
+    mpn: str
+    product_category: Optional[str] = None
+    source_count: int = 0
+    variant_count: int = 0
+    commerce_readiness: Optional[str] = None
+    created_at: datetime
+
+
+class InvestigationListResponse(BaseModel):
+    investigations: list[InvestigationSummary] = Field(
+        default_factory=list
+    )
 
 
 class TaskResponse(BaseModel):
@@ -74,6 +93,10 @@ class ProductIntelligenceResponse(BaseModel):
 
     commerce_readiness: dict[str, Any] = Field(
         default_factory=dict
+    )
+
+    sources: list[dict[str, Any]] = Field(
+        default_factory=list
     )
 
 

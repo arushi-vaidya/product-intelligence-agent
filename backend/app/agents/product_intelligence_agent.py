@@ -74,6 +74,11 @@ class ProductIntelligenceAgent(Agent):
             []
         )
 
+        sources = input.context.get(
+            "sources",
+            []
+        )
+
         # -----------------------------------
         # Build final product intelligence
         # -----------------------------------
@@ -115,6 +120,8 @@ class ProductIntelligenceAgent(Agent):
                     else "ready"
                 )
             },
+
+            "sources": sources,
         }
 
         # -----------------------------------

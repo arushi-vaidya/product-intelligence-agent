@@ -58,3 +58,10 @@ class InvestigationRepository:
 
         self.investigations[investigation.id] = investigation
         return investigation
+
+    def list_all(self) -> list[Investigation]:
+        return sorted(
+            self.investigations.values(),
+            key=lambda investigation: investigation.created_at,
+            reverse=True,
+        )

@@ -1,5 +1,6 @@
 import type {
   InvestigationCreatedResponse,
+  InvestigationListResponse,
   InvestigationRequest,
   InvestigationResponse,
   ProductIntelligence,
@@ -71,5 +72,17 @@ export async function getInvestigationResult(
 ): Promise<ProductIntelligence> {
   return request<ProductIntelligence>(
     `/investigate/${investigationId}/result`
+  );
+}
+
+export async function listInvestigations(
+  query?: string
+): Promise<InvestigationListResponse> {
+  const params = query?.trim()
+    ? `?q=${encodeURIComponent(query.trim())}`
+    : "";
+
+  return request<InvestigationListResponse>(
+    `/investigations${params}`
   );
 }

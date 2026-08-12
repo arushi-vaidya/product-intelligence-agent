@@ -610,6 +610,95 @@
   color: var(--accent);
 }
 
+.results-page .source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 13px;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.results-page .source-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.results-page .source-link--unlinked {
+  color: var(--muted);
+  cursor: default;
+}
+
+.results-page .source-link--unlinked:hover {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.results-page .source-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.results-page .source-tags .source-tag,
+.results-page .inline-source-tags .source-tag,
+.results-page .source-link.source-tag {
+  padding: 5px 9px;
+  border-radius: 6px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  font-size: 10.5px;
+  gap: 5px;
+}
+
+.results-page .source-tags .source-tag:hover,
+.results-page .inline-source-tags .source-tag:hover,
+.results-page .source-link.source-tag:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.16);
+  text-decoration: none;
+}
+
+.results-page .inline-source-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.results-page .enrichment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.results-page .spec-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.results-page .spec-source-link {
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  font-size: 10.5px;
+  gap: 5px;
+}
+
+.results-page .spec-source-link:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.16);
+  text-decoration: none;
+}
+
 .results-page .sidebar-kv-list {
   display: flex;
   flex-direction: column;
@@ -753,9 +842,9 @@
   line-height: 1.55;
 }
 
-.results-page .feature-list li span {
+.results-page .feature-list li > span {
   flex-shrink: 0;
-  color: var(--accent);
+  color: var(--muted-2);
   font-weight: 700;
 }
 
@@ -892,7 +981,8 @@
   border-top: 1px solid var(--border);
 }
 
-.results-page .source-tags span {
+.results-page .source-tags span,
+.results-page .source-tags .source-tag {
   padding: 5px 9px;
   border-radius: 6px;
   color: var(--muted);
