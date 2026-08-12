@@ -1,5 +1,4 @@
 
-````markdown
 # Industrial Product Intelligence — Frontend
 
 > A modern interactive React interface for investigating industrial products, monitoring the intelligence pipeline, exploring product intelligence, and visualizing the Attribute Knowledge Graph.
