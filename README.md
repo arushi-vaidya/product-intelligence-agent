@@ -1351,40 +1351,6 @@ Expose product intelligence to:
 
 ---
 
-# 🧭 Project Status
-
-Current MVP capabilities:
-
-* [x] Product investigation API
-* [x] DFOO orchestration
-* [x] Research pipeline
-* [x] Specification extraction
-* [x] Evidence preservation
-* [x] Conflict resolution
-* [x] Canonical product resolution
-* [x] LLM enrichment
-* [x] Product intelligence aggregation
-* [x] Quality / review status
-* [x] Commerce readiness
-* [x] Knowledge graph generation
-* [x] FastAPI API models
-* [x] Clean product result endpoint
-* [x] CORS configuration
-* [x] Frontend-backend integration
-* [x] Investigation results UI
-* [x] Interactive AKGP visualization
-
-Planned / remaining:
-
-* [ ] Investigation history API
-* [ ] Investigation history UI
-* [ ] Real-time task progress/polling
-* [ ] Source/evidence explorer
-* [ ] Human review workflow
-* [ ] Production persistence
-* [ ] Production deployment
-
----
 
 # 🏆 Example Use Cases
 
@@ -1438,18 +1404,6 @@ TypeScript
 Vite
 React Router
 CSS
-```
-
----
-
-# 📄 License
-
-Add the project's chosen license here.
-
-Example:
-
-```text
-MIT License
 ```
 
 ---
