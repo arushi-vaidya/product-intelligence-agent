@@ -164,7 +164,7 @@ async def get_investigation(
                 status=task.status.value,
                 attempts=task.attempts,
                 depends_on=task.depends_on,
-                output=task.output_data,
+                output=task.output_data or None,
             )
             for task in tasks
         ],

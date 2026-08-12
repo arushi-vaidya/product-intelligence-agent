@@ -3,11 +3,24 @@ import {
   useMemo,
   useState,
   type CSSProperties,
+  type ComponentType,
 } from "react";
 import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import {
+  ChevronRight,
+  FileText,
+  Shield,
+  ShieldAlert,
+  Sparkles,
+  Cpu,
+  Boxes,
+  GitBranch,
+  Search,
+  Network,
+} from "lucide-react";
 
 import AKGPGraph from "../components/graph/AKGPGraph";
 import "./results.css";
@@ -249,6 +262,76 @@ function normalizeList(
 }
 
 
+function normalizeEntries(
+  value: unknown
+): [string, string][] {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return [];
+  }
+
+  return Object.entries(
+    value as Record<string, unknown>
+  ).map(
+    ([key, item]) =>
+      [key, toDisplayText(item)] as [
+        string,
+        string,
+      ]
+  );
+}
+
+
+/* ============================================================
+   TAB DEFINITIONS
+   ============================================================ */
+
+type TabId =
+  | "enrichment"
+  | "specifications"
+  | "variants"
+  | "evidence"
+  | "search"
+  | "graph";
+
+type TabDefinition = {
+  id: TabId;
+  number: string;
+  label: string;
+  icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+};
+
+const BASE_TABS: TabDefinition[] = [
+  {
+    id: "enrichment",
+    number: "01",
+    label: "Product Enrichment",
+    icon: Sparkles,
+  },
+  {
+    id: "specifications",
+    number: "02",
+    label: "Technical Specifications",
+    icon: Cpu,
+  },
+  {
+    id: "variants",
+    number: "03",
+    label: "Product Variants",
+    icon: Boxes,
+  },
+  {
+    id: "evidence",
+    number: "04",
+    label: "Evidence Resolution",
+    icon: GitBranch,
+  },
+];
+
+
 /* ============================================================
    RESULTS PAGE
    ============================================================ */
@@ -280,6 +363,9 @@ export default function Results() {
     useState<string | null>(
       null
     );
+
+  const [activeTab, setActiveTab] =
+    useState<TabId>("enrichment");
 
 
   /* ----------------------------------------------------------
@@ -439,6 +525,31 @@ export default function Results() {
     );
 
 
+  const technicalSummary =
+    useMemo(
+      () =>
+        normalizeEntries(
+          enrichment.technical_summary
+        ),
+      [enrichment.technical_summary]
+    );
+
+
+  const sources =
+    useMemo(() => {
+
+      const all = variants.flatMap(
+        (variant) =>
+          variant.sources ?? []
+      );
+
+      return Array.from(
+        new Set(all)
+      );
+
+    }, [variants]);
+
+
   const variantDescriptions =
     useMemo(
       () => {
@@ -537,6 +648,44 @@ export default function Results() {
       ?.status === "ready";
 
 
+  const tabs = useMemo(() => {
+
+    const list = [...BASE_TABS];
+
+    if (keywords.length) {
+      list.push({
+        id: "search",
+        number: "06",
+        label: "Search Intelligence",
+        icon: Search,
+      });
+    }
+
+    list.push({
+      id: "graph",
+      number: "07",
+      label: "Attribute Knowledge Graph",
+      icon: Network,
+    });
+
+    return list;
+
+  }, [keywords.length]);
+
+
+  useEffect(() => {
+
+    if (
+      !tabs.some(
+        (tab) => tab.id === activeTab
+      )
+    ) {
+      setActiveTab(tabs[0]?.id ?? "enrichment");
+    }
+
+  }, [tabs, activeTab]);
+
+
   /* ==========================================================
      LOADING
      ========================================================== */
@@ -627,25 +776,26 @@ export default function Results() {
     <div className="results-page">
 
       {/* ======================================================
-          TOP NAV
+          BREADCRUMB BAR
           ====================================================== */}
 
-      <header className="results-header">
+      <div className="results-breadcrumb-bar">
 
-        <button
-          className="back-button"
-          onClick={() =>
-            navigate("/")
-          }
-        >
-          ←
-          <span>
-            Investigations
-          </span>
-        </button>
+        <div className="results-breadcrumb-inner">
 
+          <nav className="breadcrumb">
 
-        <div className="results-header-right">
+            <button onClick={() => navigate("/history")}>
+              Investigations
+            </button>
+
+            <ChevronRight size={13} strokeWidth={2} />
+
+            <span>
+              {result.mpn || "—"}
+            </span>
+
+          </nav>
 
           <span className="investigation-id">
             ID&nbsp;
@@ -654,23 +804,9 @@ export default function Results() {
             </code>
           </span>
 
-          <span
-            className={
-              readiness
-                ? "status-pill ready"
-                : "status-pill review"
-            }
-          >
-            <span className="status-dot" />
-
-            {readiness
-              ? "Commerce Ready"
-              : "Review Required"}
-          </span>
-
         </div>
 
-      </header>
+      </div>
 
 
       <main className="results-content">
@@ -684,98 +820,88 @@ export default function Results() {
           <div className="hero-copy">
 
             <div className="eyebrow">
-              PRODUCT INTELLIGENCE
+              {formatFieldName(
+                result.product_category ||
+                  "Product"
+              )}
             </div>
 
             <h1>
-              {enrichment.title
-                ? toDisplayText(
-                    enrichment.title
-                  )
-                : `${result.manufacturer ?? "Unknown manufacturer"} ${result.mpn ?? ""}`}
+              {result.mpn ||
+                (enrichment.title
+                  ? toDisplayText(enrichment.title)
+                  : "Untitled product")}
             </h1>
 
-            <p className="hero-description">
-              {enrichment.short_description
-                ? toDisplayText(
-                    enrichment.short_description
-                  )
-                : "Verified industrial product intelligence generated from investigated sources."}
-            </p>
-
-
-            <div className="product-meta">
-
-              <span>
-                <label>
-                  MANUFACTURER
-                </label>
-
-                <strong>
-                  {result.manufacturer ||
-                    "—"}
-                </strong>
-              </span>
-
-
-              <span>
-                <label>
-                  MPN
-                </label>
-
-                <strong className="mono">
-                  {result.mpn ||
-                    "—"}
-                </strong>
-              </span>
-
-
-              <span>
-                <label>
-                  CATEGORY
-                </label>
-
-                <strong>
-                  {formatFieldName(
-                    result.product_category ||
-                      "—"
-                  )}
-                </strong>
-              </span>
-
+            <div className="hero-manufacturer">
+              <FileText size={14} strokeWidth={2} />
+              {result.manufacturer || "Unknown manufacturer"}
             </div>
 
           </div>
 
 
-          <div className="hero-confidence">
+          <div className="hero-status-boxes">
 
-            <div
-              className="confidence-ring"
-              style={
-                {
-                  "--pct": confidence
-                    ? Math.round(confidence * 100)
-                    : 0,
-                } as CSSProperties
-              }
-            >
+            <div className="status-box confidence-box">
 
-              <strong>
-                {formatConfidence(
-                  confidence
-                )}
-              </strong>
-
-              <span>
-                avg.
+              <span className="status-box-label">
+                EVIDENCE CONFIDENCE
               </span>
+
+              <div className="confidence-bar-row">
+
+                <div className="confidence-bar">
+                  <div
+                    className="confidence-bar-fill"
+                    style={
+                      {
+                        width: `${confidence ? Math.round(confidence * 100) : 0}%`,
+                      } as CSSProperties
+                    }
+                  />
+                </div>
+
+                <strong>
+                  {formatConfidence(confidence)}
+                </strong>
+
+              </div>
 
             </div>
 
-            <span>
-              Evidence confidence
-            </span>
+
+            <div
+              className={
+                readiness
+                  ? "status-box review-box ready"
+                  : "status-box review-box warning"
+              }
+            >
+
+              {readiness ? (
+                <Shield size={20} strokeWidth={2} />
+              ) : (
+                <ShieldAlert size={20} strokeWidth={2} />
+              )}
+
+              <div>
+
+                <strong>
+                  {readiness
+                    ? "Commerce Ready"
+                    : "Review Required"}
+                </strong>
+
+                <span>
+                  {readiness
+                    ? "READY"
+                    : "REVIEW_REQUIRED"}
+                </span>
+
+              </div>
+
+            </div>
 
           </div>
 
@@ -795,13 +921,13 @@ export default function Results() {
                 specifications
               ).length
             }
-            description="Family-level attributes"
+            description="family attributes"
           />
 
           <MetricCard
             label="Variants"
             value={variants.length}
-            description="Discovered product variants"
+            description="discovered"
           />
 
           <MetricCard
@@ -810,7 +936,7 @@ export default function Results() {
               knowledgeGraph
                 .entities.length
             }
-            description="AKGP entities"
+            description="AKGP nodes"
           />
 
           <MetricCard
@@ -819,569 +945,602 @@ export default function Results() {
               knowledgeGraph
                 .relationships.length
             }
-            description="AKGP relationships"
+            description="edges"
           />
 
         </section>
 
 
         {/* ==================================================
-            ENRICHMENT
+            TAB BAR
             ================================================== */}
 
-        <section className="result-section">
+        <nav className="tab-bar">
 
-          <SectionHeading
-            number="01"
-            title="Product Enrichment"
-            description="Commerce-oriented content generated from verified product intelligence."
-          />
+          {tabs.map((tab) => (
 
+            <button
+              key={tab.id}
+              className={
+                activeTab === tab.id
+                  ? "tab-button active"
+                  : "tab-button"
+              }
+              onClick={() => setActiveTab(tab.id)}
+            >
 
-          <div className="enrichment-grid">
-
-            <div className="content-card large">
-
-              <span className="card-label">
-                OVERVIEW
+              <span className="tab-number">
+                {tab.number}
               </span>
 
-              <h3>
-                Product description
-              </h3>
+              <tab.icon size={14} strokeWidth={2} />
 
-              <p className="large-copy">
-                {toDisplayText(
-                  enrichment.short_description
-                )}
-              </p>
+              {tab.label}
 
-            </div>
+            </button>
 
+          ))}
 
-            <div className="content-card">
-
-              <span className="card-label">
-                FEATURES
-              </span>
-
-              {features.length ? (
-
-                <ul className="feature-list">
-
-                  {features.map(
-                    (feature, index) => (
-
-                      <li key={index}>
-                        <span>
-                          ✓
-                        </span>
-
-                        {feature}
-                      </li>
-
-                    )
-                  )}
-
-                </ul>
-
-              ) : (
-
-                <EmptyState text="No features returned." />
-
-              )}
-
-            </div>
-
-
-            <div className="content-card">
-
-              <span className="card-label">
-                APPLICATIONS
-              </span>
-
-              {applications.length ? (
-
-                <ul className="feature-list">
-
-                  {applications.map(
-                    (
-                      application,
-                      index
-                    ) => (
-
-                      <li key={index}>
-                        <span>
-                          →
-                        </span>
-
-                        {application}
-                      </li>
-
-                    )
-                  )}
-
-                </ul>
-
-              ) : (
-
-                <EmptyState text="No applications returned." />
-
-              )}
-
-            </div>
-
-          </div>
-
-        </section>
+        </nav>
 
 
         {/* ==================================================
-            SPECIFICATIONS
+            TAB CONTENT
             ================================================== */}
 
-        <section className="result-section">
+        <div className="tab-panel">
 
-          <SectionHeading
-            number="02"
-            title="Technical Specifications"
-            description="Canonical family-level specifications after evidence resolution."
-          />
+          {/* ------------------------------------------------
+              01 · PRODUCT ENRICHMENT
+              ------------------------------------------------ */}
+
+          {activeTab === "enrichment" && (
+
+            <div className="tab-layout-with-sidebar">
+
+              <div className="tab-main">
+
+                <div className="tab-block">
+
+                  <span className="tab-block-label">
+                    OVERVIEW
+                  </span>
+
+                  <h2>
+                    {result.manufacturer} {result.mpn} —{" "}
+                    {formatFieldName(
+                      result.product_category || "Product"
+                    )}
+                  </h2>
+
+                  <p>
+                    {toDisplayText(
+                      enrichment.short_description
+                    )}
+                  </p>
+
+                </div>
 
 
-          <div className="spec-grid">
+                <div className="tab-columns">
 
-            {Object.entries(
-              specifications
-            ).map(
-              (
-                [
-                  field,
-                  specification,
-                ]
-              ) => (
+                  <div className="tab-block">
 
-                <div
-                  className="spec-card"
-                  key={field}
-                >
-
-                  <div className="spec-top">
-
-                    <span>
-                      {formatFieldName(
-                        field
-                      )}
+                    <span className="tab-block-label">
+                      FEATURES
                     </span>
 
-                    <span className="confidence-badge">
-                      {formatConfidence(
-                        specification?.confidence
-                      )}
-                    </span>
+                    {features.length ? (
+
+                      <ul className="feature-list">
+
+                        {features.map(
+                          (feature, index) => (
+
+                            <li key={index}>
+                              <span>✓</span>
+                              {feature}
+                            </li>
+
+                          )
+                        )}
+
+                      </ul>
+
+                    ) : (
+
+                      <EmptyState text="No features returned." />
+
+                    )}
 
                   </div>
 
-                  <strong>
-                    {getSpecValue(
-                      specification
+
+                  <div className="tab-block">
+
+                    <span className="tab-block-label">
+                      APPLICATIONS
+                    </span>
+
+                    {applications.length ? (
+
+                      <ul className="feature-list">
+
+                        {applications.map(
+                          (application, index) => (
+
+                            <li key={index}>
+                              <span>→</span>
+                              {application}
+                            </li>
+
+                          )
+                        )}
+
+                      </ul>
+
+                    ) : (
+
+                      <EmptyState text="No applications returned." />
+
                     )}
-                  </strong>
-
-                  <div className="spec-status">
-
-                    <span className="verified-dot" />
-
-                    {specification?.quality_status ||
-                      "verified"}
 
                   </div>
 
                 </div>
 
-              )
-            )}
 
-          </div>
-
-        </section>
+              </div>
 
 
-        {/* ==================================================
-            VARIANTS
-            ================================================== */}
+              <aside className="tab-sidebar">
 
-        <section className="result-section">
+                <div className="sidebar-panel">
 
-          <SectionHeading
-            number="03"
-            title="Product Variants"
-            description="Variant-level attributes remain separated from family-level specifications."
-          />
+                  <span className="sidebar-panel-title">
+                    SUPPORTED BY
+                  </span>
 
+                  {sources.length ? (
 
-          <div className="variant-grid">
+                    <ul className="sidebar-source-list">
 
-            {variants.map(
-              (variant) => (
+                      {sources.map((source) => (
 
-                <div
-                  className="variant-card"
-                  key={variant.mpn}
-                >
+                        <li key={source}>
+                          <FileText size={14} strokeWidth={2} />
+                          {source}
+                        </li>
 
-                  <div className="variant-card-top">
+                      ))}
 
-                    <div>
+                    </ul>
 
-                      <span className="card-label">
-                        MPN
-                      </span>
+                  ) : (
 
-                      <h3 className="mono">
-                        {variant.mpn}
-                      </h3>
+                    <EmptyState text="No sources recorded." />
 
-                    </div>
+                  )}
 
-                    <span className="variant-count">
-                      {Object.keys(
-                        variant.specifications ??
-                          {}
-                      ).length}
-                      &nbsp; attrs
-                    </span>
-
-                  </div>
+                </div>
 
 
-                  <div className="variant-specs">
+                <div className="sidebar-panel">
 
-                    {Object.entries(
-                      variant.specifications ??
-                        {}
-                    ).map(
-                      (
-                        [
-                          key,
-                          value,
-                        ]
-                      ) => (
+                  <span className="sidebar-panel-title">
+                    TECHNICAL SUMMARY
+                  </span>
 
-                        <div
-                          key={key}
-                          className="variant-spec"
-                        >
+                  {technicalSummary.length ? (
 
-                          <span>
-                            {formatFieldName(
-                              key
-                            )}
-                          </span>
+                    <div className="sidebar-kv-list">
 
-                          <strong>
-                            {toDisplayText(
-                              value
-                            )}
-                          </strong>
+                      {technicalSummary.map(
+                        ([key, value]) => (
 
-                        </div>
-
-                      )
-                    )}
-
-                  </div>
-
-
-                  {variant.sources?.length ? (
-
-                    <div className="source-tags">
-
-                      {variant.sources.map(
-                        (source) => (
-
-                          <span
-                            key={source}
-                          >
-                            {source}
-                          </span>
+                          <div className="sidebar-kv-row" key={key}>
+                            <span>{key}</span>
+                            <strong>{value}</strong>
+                          </div>
 
                         )
                       )}
 
                     </div>
 
-                  ) : null}
+                  ) : (
+
+                    <EmptyState text="No technical summary returned." />
+
+                  )}
 
                 </div>
 
-              )
-            )}
-
-          </div>
-
-        </section>
-
-
-        {/* ==================================================
-            VARIANT DESCRIPTIONS
-            ================================================== */}
-
-        {variantDescriptions.length >
-          0 && (
-
-          <section className="result-section">
-
-            <SectionHeading
-              number="04"
-              title="Variant Intelligence"
-              description="Generated descriptions for discovered variants."
-            />
-
-
-            <div className="description-grid">
-
-              {variantDescriptions.map(
-                (variant) => (
-
-                  <div
-                    className="content-card"
-                    key={
-                      variant.mpn ||
-                      variant.description
-                    }
-                  >
-
-                    <span className="card-label">
-                      {variant.mpn ||
-                        "VARIANT"}
-                    </span>
-
-                    <p>
-                      {variant.description}
-                    </p>
-
-                  </div>
-
-                )
-              )}
+              </aside>
 
             </div>
 
-          </section>
-
-        )}
+          )}
 
 
-        {/* ==================================================
-            CONFLICTS / QUALITY
-            ================================================== */}
+          {/* ------------------------------------------------
+              02 · TECHNICAL SPECIFICATIONS
+              ------------------------------------------------ */}
 
-        <section className="result-section">
+          {activeTab === "specifications" && (
 
-          <SectionHeading
-            number="05"
-            title="Evidence Resolution"
-            description="How conflicting product attributes were interpreted."
-          />
+            <>
+
+              <TabIntro
+                title="Technical Specifications"
+                description="Canonical family-level specifications after evidence resolution across all discovered sources."
+              />
+
+              <div className="spec-grid">
+
+                {Object.entries(specifications).map(
+                  ([field, specification]) => (
+
+                    <div className="spec-card" key={field}>
+
+                      <div className="spec-top">
+
+                        <span>
+                          {formatFieldName(field)}
+                        </span>
+
+                        <span className="confidence-badge">
+                          {formatConfidence(
+                            specification?.confidence
+                          )}
+                        </span>
+
+                      </div>
+
+                      <strong>
+                        {getSpecValue(specification)}
+                      </strong>
+
+                      <div className="spec-status">
+
+                        <span className="verified-dot" />
+
+                        {specification?.quality_status ||
+                          "verified"}
+
+                      </div>
+
+                    </div>
+
+                  )
+                )}
+
+                {!Object.keys(specifications).length && (
+                  <EmptyState text="No family specifications returned." />
+                )}
+
+              </div>
+
+            </>
+
+          )}
 
 
-          <div className="quality-layout">
+          {/* ------------------------------------------------
+              03 · PRODUCT VARIANTS
+              ------------------------------------------------ */}
 
-            <div className="quality-summary">
+          {activeTab === "variants" && (
 
-              <div
-                className={
-                  quality.human_review_required
-                    ? "quality-status warning"
-                    : "quality-status success"
-                }
-              >
+            <>
 
-                <div className="quality-icon">
-                  {quality.human_review_required
-                    ? "!"
-                    : "✓"}
+              <TabIntro
+                title="Product Variants"
+                description="Variant-level attributes remain separated from family-level specifications so true differences are never merged with shared defaults."
+              />
+
+              <div className="variant-grid">
+
+                {variants.map((variant) => (
+
+                  <div className="variant-card" key={variant.mpn}>
+
+                    <div className="variant-card-top">
+
+                      <div>
+
+                        <span className="card-label">
+                          MPN
+                        </span>
+
+                        <h3 className="mono">
+                          {variant.mpn}
+                        </h3>
+
+                      </div>
+
+                      <span className="variant-count">
+                        {Object.keys(
+                          variant.specifications ?? {}
+                        ).length}
+                        &nbsp; attrs
+                      </span>
+
+                    </div>
+
+
+                    <div className="variant-specs">
+
+                      {Object.entries(
+                        variant.specifications ?? {}
+                      ).map(([key, value]) => (
+
+                        <div key={key} className="variant-spec">
+
+                          <span>
+                            {formatFieldName(key)}
+                          </span>
+
+                          <strong>
+                            {toDisplayText(value)}
+                          </strong>
+
+                        </div>
+
+                      ))}
+
+                    </div>
+
+
+                    {variant.sources?.length ? (
+
+                      <div className="source-tags">
+
+                        {variant.sources.map((source) => (
+                          <span key={source}>{source}</span>
+                        ))}
+
+                      </div>
+
+                    ) : null}
+
+                  </div>
+
+                ))}
+
+                {!variants.length && (
+                  <EmptyState text="No variants discovered." />
+                )}
+
+              </div>
+
+
+              {variantDescriptions.length > 0 && (
+
+                <div className="tab-block variant-intelligence-block">
+
+                  <span className="tab-block-label">
+                    VARIANT INTELLIGENCE
+                  </span>
+
+                  <div className="description-grid">
+
+                    {variantDescriptions.map((variant) => (
+
+                      <div
+                        className="content-card"
+                        key={variant.mpn || variant.description}
+                      >
+
+                        <span className="card-label">
+                          {variant.mpn || "VARIANT"}
+                        </span>
+
+                        <p>
+                          {variant.description}
+                        </p>
+
+                      </div>
+
+                    ))}
+
+                  </div>
+
                 </div>
 
-                <div>
+              )}
 
-                  <strong>
-                    {quality.human_review_required
-                      ? "Human review required"
-                      : "No human review required"}
-                  </strong>
+            </>
 
-                  <span>
-                    {conflicts.length
-                      ? `${conflicts.length} conflict resolution${conflicts.length > 1 ? "s" : ""} recorded`
-                      : "No unresolved conflicts"}
-                  </span>
+          )}
+
+
+          {/* ------------------------------------------------
+              04 · EVIDENCE RESOLUTION
+              ------------------------------------------------ */}
+
+          {activeTab === "evidence" && (
+
+            <>
+
+              <TabIntro
+                title="Evidence Resolution"
+                description="How conflicting product attributes were interpreted, and which ones still require a human decision."
+              />
+
+              <div className="quality-layout">
+
+                <div className="quality-summary">
+
+                  <div
+                    className={
+                      quality.human_review_required
+                        ? "quality-status warning"
+                        : "quality-status success"
+                    }
+                  >
+
+                    <div className="quality-icon">
+                      {quality.human_review_required ? "!" : "✓"}
+                    </div>
+
+                    <div>
+
+                      <strong>
+                        {quality.human_review_required
+                          ? "Human review required"
+                          : "No human review required"}
+                      </strong>
+
+                      <span>
+                        {conflicts.length
+                          ? `${conflicts.length} conflict resolution${conflicts.length > 1 ? "s" : ""} recorded`
+                          : "No unresolved conflicts"}
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+
+                <div className="conflict-list">
+
+                  {conflicts.length ? (
+
+                    conflicts.map((conflict, index) => (
+
+                      <div
+                        className="conflict-card"
+                        key={`${conflict.field}-${index}`}
+                      >
+
+                        <div className="conflict-header">
+
+                          <span className="card-label">
+                            FIELD
+                          </span>
+
+                          <strong>
+                            {formatFieldName(
+                              conflict.field || "unknown"
+                            )}
+                          </strong>
+
+                          <span className="resolution-badge">
+                            {conflict.status || "resolved"}
+                          </span>
+
+                        </div>
+
+                        <p>
+                          {conflict.explanation ||
+                            "Conflict was resolved using available product evidence."}
+                        </p>
+
+
+                        {conflict.variants?.length ? (
+
+                          <div className="conflict-variants">
+
+                            {conflict.variants.map(
+                              (variant, variantIndex) => (
+
+                                <div key={variantIndex}>
+
+                                  <span className="mono">
+                                    {variant.mpn}
+                                  </span>
+
+                                  <strong>
+                                    {variant.value}
+                                  </strong>
+
+                                </div>
+
+                              )
+                            )}
+
+                          </div>
+
+                        ) : null}
+
+                      </div>
+
+                    ))
+
+                  ) : (
+
+                    <div className="empty-panel">
+                      <span className="verified-dot" />
+                      No conflicts requiring resolution.
+                    </div>
+
+                  )}
 
                 </div>
 
               </div>
 
-            </div>
+            </>
+
+          )}
 
 
-            <div className="conflict-list">
+          {/* ------------------------------------------------
+              06 · SEARCH INTELLIGENCE
+              ------------------------------------------------ */}
 
-              {conflicts.length ? (
+          {activeTab === "search" && (
 
-                conflicts.map(
-                  (
-                    conflict,
-                    index
-                  ) => (
+            <>
 
-                    <div
-                      className="conflict-card"
-                      key={`${conflict.field}-${index}`}
-                    >
+              <TabIntro
+                title="Search Intelligence"
+                description="Keywords generated for product discovery, storefront search, and commerce indexing."
+              />
 
-                      <div className="conflict-header">
+              <div className="keyword-cloud">
 
-                        <span className="card-label">
-                          FIELD
-                        </span>
+                {keywords.map((keyword, index) => (
+                  <span key={`${keyword}-${index}`}>{keyword}</span>
+                ))}
 
-                        <strong>
-                          {formatFieldName(
-                            conflict.field ||
-                              "unknown"
-                          )}
-                        </strong>
+                {!keywords.length && (
+                  <EmptyState text="No search keywords returned." />
+                )}
 
-                        <span className="resolution-badge">
-                          {conflict.status ||
-                            "resolved"}
-                        </span>
+              </div>
 
-                      </div>
+            </>
 
-                      <p>
-                        {conflict.explanation ||
-                          "Conflict was resolved using available product evidence."}
-                      </p>
+          )}
 
 
-                      {conflict.variants?.length ? (
+          {/* ------------------------------------------------
+              07 · ATTRIBUTE KNOWLEDGE GRAPH
+              ------------------------------------------------ */}
 
-                        <div className="conflict-variants">
+          {activeTab === "graph" && (
 
-                          {conflict.variants.map(
-                            (
-                              variant,
-                              variantIndex
-                            ) => (
+            <>
 
-                              <div
-                                key={
-                                  variantIndex
-                                }
-                              >
+              <TabIntro
+                title="Attribute Knowledge Graph"
+                description="Explore the relationships between manufacturer, product family, and discovered variants."
+              />
 
-                                <span className="mono">
-                                  {variant.mpn}
-                                </span>
+              <AKGPGraph
+                entities={knowledgeGraph.entities}
+                relationships={knowledgeGraph.relationships}
+              />
 
-                                <strong>
-                                  {variant.value}
-                                </strong>
+            </>
 
-                              </div>
+          )}
 
-                            )
-                          )}
-
-                        </div>
-
-                      ) : null}
-
-                    </div>
-
-                  )
-                )
-
-              ) : (
-
-                <div className="empty-panel">
-
-                  <span className="verified-dot" />
-
-                  No conflicts requiring resolution.
-
-                </div>
-
-              )}
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        {/* ==================================================
-            SEARCH KEYWORDS
-            ================================================== */}
-
-        {keywords.length > 0 && (
-
-          <section className="result-section">
-
-            <SectionHeading
-              number="06"
-              title="Search Intelligence"
-              description="Keywords generated for product discovery and commerce."
-            />
-
-
-            <div className="keyword-cloud">
-
-              {keywords.map(
-                (keyword, index) => (
-
-                  <span
-                    key={`${keyword}-${index}`}
-                  >
-                    {keyword}
-                  </span>
-
-                )
-              )}
-
-            </div>
-
-          </section>
-
-        )}
-
-
-        {/* ==================================================
-            KNOWLEDGE GRAPH
-            ================================================== */}
-
-        <section className="result-section">
-
-          <SectionHeading
-            number="07"
-            title="Attribute Knowledge Graph"
-            description="Explore the relationships between manufacturer, product family, and discovered variants."
-          />
-
-
-          <AKGPGraph
-            entities={
-              knowledgeGraph.entities
-            }
-            relationships={
-              knowledgeGraph.relationships
-            }
-          />
-
-        </section>
+        </div>
 
 
         {/* ==================================================
@@ -1434,41 +1593,6 @@ export default function Results() {
    SMALL COMPONENTS
    ============================================================ */
 
-function SectionHeading({
-  number,
-  title,
-  description,
-}: {
-  number: string;
-  title: string;
-  description: string;
-}) {
-
-  return (
-
-    <div className="section-heading">
-
-      <span className="section-number">
-        {number} /
-      </span>
-
-      <div>
-
-        <h2>
-          {title}
-        </h2>
-
-        <p>
-          {description}
-        </p>
-
-      </div>
-
-    </div>
-  );
-}
-
-
 function MetricCard({
   label,
   value,
@@ -1494,6 +1618,31 @@ function MetricCard({
       <small>
         {description}
       </small>
+
+    </div>
+  );
+}
+
+
+function TabIntro({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+
+  return (
+
+    <div className="tab-intro">
+
+      <h2>
+        {title}
+      </h2>
+
+      <p>
+        {description}
+      </p>
 
     </div>
   );

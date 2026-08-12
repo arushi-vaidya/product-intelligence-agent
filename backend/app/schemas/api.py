@@ -32,8 +32,8 @@ class TaskResponse(BaseModel):
         default_factory=list
     )
 
-    output: dict[str, Any] = Field(
-        default_factory=dict
+    output: Optional[dict[str, Any]] = Field(
+        default=None
     )
 
 
