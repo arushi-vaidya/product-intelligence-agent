@@ -98,6 +98,7 @@ The backend is built around a DFOO orchestration pipeline.
 * Tavily
 * Google Gemini
 * python-dotenv
+* python-multipart
 
 ---
 
@@ -121,21 +122,21 @@ backend/
 │   │   └── product_intelligence_agent.py
 │   │
 │   ├── dfoo/
-│   │   └── orchestrator.py
+│   │   ├── orchestrator.py
+│   │   ├── task_repository.py
+│   │   └── task_state.py
 │   │
 │   ├── knowledge/
 │   │   ├── entities.py
 │   │   └── graph.py
 │   │
-│   ├── repositories/
-│   │   ├── investigation_repository.py
-│   │   └── task_repository.py
-│   │
 │   ├── schemas/
 │   │   └── api.py
 │   │
 │   ├── services/
-│   │   └── source_discovery.py
+│   │   ├── source_discovery.py
+│   │   ├── source_filter.py
+│   │   └── product_image_extractor.py
 │   │
 │   └── main.py
 │
@@ -444,9 +445,84 @@ curl \
   "quality": {},
   "commerce_readiness": {
     "status": "ready"
-  }
+  },
+  "sources": []
 }
 ```
+
+---
+
+# 5. List Investigations
+
+### `GET /investigations`
+
+Returns the investigation archive for the frontend history page.
+
+Optional query parameter: `?q=search_term` filters by manufacturer, MPN, or category.
+
+### Example
+
+```bash
+curl http://127.0.0.1:8000/investigations
+```
+
+### Response
+
+```json
+{
+  "investigations": [
+    {
+      "investigation_id": "1451993c-4d9a-42cc-94a6-d9e444d1d731",
+      "status": "done",
+      "manufacturer": "Schneider Electric",
+      "mpn": "iC60N C20",
+      "product_category": "industrial_electrical",
+      "source_count": 4,
+      "variant_count": 3,
+      "commerce_readiness": "ready",
+      "created_at": "2026-08-12T08:30:00"
+    }
+  ]
+}
+```
+
+Investigations are stored in memory for the current server session.
+
+---
+
+# 6. Extract Product From Image
+
+### `POST /investigate/extract-from-image`
+
+Uses Gemini 2.5 Flash to read a product/nameplate image and extract manufacturer and MPN before starting an investigation.
+
+### Request
+
+`multipart/form-data` with field `file`.
+
+Supported types: JPEG, PNG, WebP, GIF (max 10 MB).
+
+Requires `GEMINI_API_KEY` in `.env`.
+
+### Example
+
+```bash
+curl -X POST \
+  http://127.0.0.1:8000/investigate/extract-from-image \
+  -F "file=@/path/to/product.jpg"
+```
+
+### Response
+
+```json
+{
+  "manufacturer": "Schneider Electric",
+  "mpn": "A9F77120",
+  "notes": "Read from product label"
+}
+```
+
+The frontend pre-fills the investigation form with this response, then calls `POST /investigate` as usual.
 
 ---
 
@@ -455,25 +531,41 @@ curl \
 The frontend should follow this sequence:
 
 ```text
+Option A — Manual input
 1. User enters manufacturer + MPN
               │
               ▼
 2. POST /investigate
               │
               ▼
-3. Receive investigation_id
+3. Poll GET /investigate/{id} until status is done
               │
               ▼
-4. GET /investigate/{id}
+4. GET /investigate/{id}/result
               │
               ▼
-5. Display investigation/task progress
+5. Display final product intelligence
+
+Option B — Image upload
+1. User uploads product image
               │
               ▼
-6. GET /investigate/{id}/result
+2. POST /investigate/extract-from-image
               │
               ▼
-7. Display final product intelligence
+3. User reviews extracted manufacturer + MPN
+              │
+              ▼
+4. Continue with Option A from step 2
+
+History
+1. GET /investigations
+              │
+              ▼
+2. User selects a completed investigation
+              │
+              ▼
+3. GET /investigate/{id}/result
 ```
 
 For the final product page, use:
@@ -856,15 +948,17 @@ python -m uvicorn app.main:app
 
 # API Summary
 
-| Method | Endpoint                   | Purpose                              |
-| ------ | -------------------------- | ------------------------------------ |
-| `GET`  | `/`                        | Backend health check                 |
-| `POST` | `/investigate`             | Start a product investigation        |
-| `GET`  | `/investigate/{id}`        | Get complete investigation + tasks   |
-| `GET`  | `/investigate/{id}/result` | Get clean final product intelligence |
-| `GET`  | `/docs`                    | Swagger API documentation            |
-| `GET`  | `/redoc`                   | ReDoc API documentation              |
-| `GET`  | `/openapi.json`            | OpenAPI specification                |
+| Method | Endpoint                            | Purpose                              |
+| ------ | ----------------------------------- | ------------------------------------ |
+| `GET`  | `/`                                 | Backend health check                 |
+| `POST` | `/investigate`                      | Start a product investigation        |
+| `POST` | `/investigate/extract-from-image`   | Extract manufacturer/MPN from image  |
+| `GET`  | `/investigations`                   | List investigation archive           |
+| `GET`  | `/investigate/{id}`                 | Get complete investigation + tasks   |
+| `GET`  | `/investigate/{id}/result`          | Get clean final product intelligence |
+| `GET`  | `/docs`                             | Swagger API documentation            |
+| `GET`  | `/redoc`                            | ReDoc API documentation              |
+| `GET`  | `/openapi.json`                     | OpenAPI specification                |
 
 ---
 
@@ -918,7 +1012,7 @@ GET /investigate/{investigation_id}/result
 The backend currently supports:
 
 * Multi-agent product investigation
-* External source discovery
+* External source discovery (Tavily)
 * Source validation
 * Document extraction
 * Technical specification extraction
@@ -926,11 +1020,11 @@ The backend currently supports:
 * Variant identification
 * Knowledge graph construction
 * Canonical product resolution
-* LLM-based commerce enrichment
+* LLM-based commerce enrichment (Gemini)
 * Evidence validation
+* Gemini image-based product identification
+* Investigation archive listing
+* Source metadata in final API responses
 * Structured Pydantic API responses
-* Investigation/task tracking
+* In-memory investigation/task tracking
 * Swagger/OpenAPI documentation
-
-```
-```

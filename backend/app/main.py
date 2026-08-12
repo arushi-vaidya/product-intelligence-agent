@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.dfoo.orchestrator import DFOO
@@ -11,8 +11,13 @@ from app.schemas.api import (
     InvestigationListResponse,
     InvestigationResponse,
     InvestigationSummary,
+    ProductExtractionResponse,
     ProductIntelligenceResponse,
     TaskResponse,
+)
+from app.services.product_image_extractor import (
+    ProductImageExtractionError,
+    extract_product_from_image,
 )
 
 
@@ -203,6 +208,42 @@ async def list_investigations(
 
     return InvestigationListResponse(
         investigations=summaries
+    )
+
+
+# ==========================================
+# EXTRACT PRODUCT FROM IMAGE
+# ==========================================
+
+@app.post(
+    "/investigate/extract-from-image",
+    response_model=ProductExtractionResponse,
+)
+async def extract_product_from_image_endpoint(
+    file: UploadFile = File(...),
+):
+
+    if not file.content_type:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not determine image type.",
+        )
+
+    image_bytes = await file.read()
+
+    try:
+        extracted = extract_product_from_image(
+            image_bytes=image_bytes,
+            mime_type=file.content_type,
+        )
+    except ProductImageExtractionError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    return ProductExtractionResponse(
+        **extracted
     )
 
 

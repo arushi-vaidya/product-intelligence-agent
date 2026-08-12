@@ -353,6 +353,134 @@ button {
   font-size: 12px;
 }
 
+.image-upload-section label {
+  margin: 18px 0 8px;
+}
+
+.image-upload-dropzone {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  color: #737b89;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.image-upload-dropzone:hover,
+.image-upload-dropzone:focus-visible {
+  border-color: rgba(119, 132, 255, 0.45);
+  background: rgba(119, 132, 255, 0.04);
+  outline: none;
+}
+
+.image-upload-dropzone.has-preview {
+  min-height: auto;
+  padding: 10px;
+  cursor: default;
+}
+
+.image-upload-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.image-upload-dropzone strong {
+  color: #d4d8e0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.image-upload-dropzone span {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.image-upload-preview {
+  position: relative;
+  width: 100%;
+}
+
+.image-upload-preview img {
+  display: block;
+  width: 100%;
+  max-height: 112px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.image-upload-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.image-upload-clear:hover {
+  background: rgba(0, 0, 0, 0.82);
+}
+
+.image-extract-button {
+  margin-top: 10px;
+  min-height: 44px;
+}
+
+.extraction-note {
+  margin: 8px 0 0;
+  color: #737b89;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.input-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 20px 0 4px;
+  color: #5f6774;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.input-divider::before,
+.input-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.spin-icon {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .input-wrapper {
   display: flex;
   align-items: center;

@@ -3,6 +3,7 @@ import type {
   InvestigationListResponse,
   InvestigationRequest,
   InvestigationResponse,
+  ProductExtractionResponse,
   ProductIntelligence,
 } from "../types/api";
 
@@ -85,4 +86,40 @@ export async function listInvestigations(
   return request<InvestigationListResponse>(
     `/investigations${params}`
   );
+}
+
+export async function extractProductFromImage(
+  file: File
+): Promise<ProductExtractionResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_BASE_URL}/investigate/extract-from-image`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    let message = `Image extraction failed: ${response.status}`;
+
+    try {
+      const error = await response.json();
+
+      if (error?.detail) {
+        message =
+          typeof error.detail === "string"
+            ? error.detail
+            : JSON.stringify(error.detail);
+      }
+    } catch {
+      // Keep default error message.
+    }
+
+    throw new Error(message);
+  }
+
+  return response.json();
 }

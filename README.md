@@ -35,6 +35,7 @@ Start an investigation using:
 
 - Manufacturer
 - Manufacturer Part Number (MPN)
+- **Product image upload** — Gemini reads the label/nameplate and extracts manufacturer + MPN before the pipeline runs
 
 Example:
 
@@ -43,9 +44,9 @@ Example:
   "manufacturer": "Schneider Electric",
   "mpn": "iC60N C20"
 }
-````
+```
 
-The system creates an investigation and runs the product intelligence pipeline.
+Or upload a photo on the investigation page; Gemini extracts the fields, you review them, then start the same pipeline.
 
 ---
 
@@ -497,12 +498,13 @@ The landing page is intentionally focused on the two primary workflows.
 
 The investigation page provides:
 
-* Manufacturer input
-* MPN/product input
+* Compact product image upload (drag & drop or browse)
+* Gemini-based extraction of manufacturer and MPN from the image
+* Manual manufacturer and MPN inputs
 * Investigation start action
-* Visual representation of the intelligence pipeline
+* Visual representation of the 11-stage intelligence pipeline
 
-Example:
+Example manual flow:
 
 ```text
 Manufacturer
@@ -518,7 +520,9 @@ MPN
              [ Investigate ]
 ```
 
-The page then transitions into the investigation pipeline.
+Or upload a product/nameplate image, click **Extract manufacturer & product**, review the filled fields, then begin the investigation.
+
+The page then transitions into the live investigation pipeline view.
 
 ---
 
@@ -570,19 +574,24 @@ Failed
 
 # 📚 Investigation History
 
-The history page provides access to previous investigations.
+The history page lists previous investigations from the backend archive.
 
-Each investigation can display:
+Each card displays:
 
 * Manufacturer
-* MPN
-* Investigation status
-* Creation time
-* Commerce readiness
-* Number of specifications
-* Number of variants
+* MPN / product identifier
+* Product category (when available)
+* Source and variant counts
+* Status (Ready, Running, Failed, Review required)
+* Creation timestamp
 
-Selecting an investigation opens its results.
+Features:
+
+* Live fetch from `GET /investigations`
+* Search by manufacturer, MPN, or category
+* Click-through to results for completed investigations
+
+**Note:** Investigations are stored in memory for the current backend session and reset when the server restarts.
 
 ---
 
@@ -608,15 +617,16 @@ Displays:
 Displays:
 
 * Short description
-* Features
-* Applications
+* Features with source citations (linked where available)
+* Applications with source citations
 * Search keywords
+* Sidebar **Supported By** list with links to original sources
 
 ---
 
 ## Technical Specifications
 
-Displays canonical family-level specifications.
+Displays canonical family-level specifications with clickable source links from extracted evidence.
 
 Example:
 
@@ -631,7 +641,7 @@ Breaking Capacity   10 kA      80%
 
 ## Product Variants
 
-Displays variant-specific information separately from family-level specifications.
+Displays variant-specific information separately from family-level specifications, including linked source tags per variant.
 
 Example:
 
@@ -751,6 +761,60 @@ The investigation ID is then used to retrieve the investigation.
 
 ---
 
+## POST /investigate/extract-from-image
+
+Extracts manufacturer and MPN from an uploaded product image using Gemini 2.5 Flash.
+
+### Request
+
+`multipart/form-data` with a `file` field (JPEG, PNG, WebP, or GIF, max 10 MB).
+
+### Response
+
+```json
+{
+  "manufacturer": "Schneider Electric",
+  "mpn": "A9F77120",
+  "notes": "Read from product label"
+}
+```
+
+The frontend uses this to pre-fill the investigation form before calling `POST /investigate`.
+
+---
+
+## GET /investigations
+
+Returns the investigation archive for the history page.
+
+Optional query parameter:
+
+```text
+?q=schneider
+```
+
+### Response
+
+```json
+{
+  "investigations": [
+    {
+      "investigation_id": "uuid",
+      "status": "done",
+      "manufacturer": "Schneider Electric",
+      "mpn": "iC60N C20",
+      "product_category": "industrial_electrical",
+      "source_count": 4,
+      "variant_count": 3,
+      "commerce_readiness": "ready",
+      "created_at": "2026-08-12T08:30:00"
+    }
+  ]
+}
+```
+
+---
+
 # GET /investigate/{investigation_id}
 
 Returns the complete investigation state.
@@ -804,11 +868,13 @@ Product Intelligence
 ├── Manufacturer
 ├── MPN
 ├── Category
+├── Sources (id, url, title, authority tier)
 ├── Enrichment
-├── Family Specifications
+├── Family Specifications (with evidence + source URLs)
 ├── Variants
 ├── Knowledge Graph
 ├── Conflict Resolutions
+├── Evidence Validation
 ├── Quality
 └── Commerce Readiness
 ```
@@ -1336,7 +1402,7 @@ Manufacturer
 
 ### Source-level visualization
 
-Allow users to click a specification and inspect the exact evidence supporting it.
+Users can follow clickable source links from enrichment, specifications, and variants to the original URLs. Future work could add inline evidence snippets on the results page.
 
 ### Catalog integration
 
@@ -1393,6 +1459,7 @@ Python
 FastAPI
 Pydantic
 Google Gemini
+Tavily
 DFOO
 ```
 
@@ -1413,7 +1480,7 @@ CSS
 Industrial Product Intelligence turns:
 
 ```text
-Manufacturer + MPN
+Manufacturer + MPN  (or product image)
         │
         ▼
 Fragmented product information

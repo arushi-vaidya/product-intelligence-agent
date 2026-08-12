@@ -45,12 +45,12 @@ The interface focuses on making complex product intelligence understandable with
 
 ## Product Investigation
 
-Users can start an investigation by entering:
+Users can start an investigation by:
 
-* Manufacturer
-* Manufacturer Part Number (MPN)
+* Entering **Manufacturer** and **MPN** manually, or
+* Uploading a **product image** — Gemini extracts manufacturer and product from the label/nameplate
 
-Example:
+Example manual input:
 
 ```text
 Manufacturer:
@@ -60,7 +60,13 @@ MPN:
 iC60N C20
 ```
 
-The frontend sends the request to the backend and receives an investigation ID.
+Image flow:
+
+```text
+Upload image → Extract with Gemini → Review fields → Begin Investigation
+```
+
+The frontend sends the request to the backend and receives an investigation ID. The investigation page polls task progress until completion, then navigates to results.
 
 ---
 
@@ -110,19 +116,18 @@ Displays:
 Displays:
 
 * Product description
-* Features
-* Applications
+* Features with linked source citations
+* Applications with linked source citations
 * Search keywords
+* Sidebar sources with external links
 
 ### Technical Specifications
 
 Displays:
 
 * Family-level specifications
-* Values
-* Units
-* Confidence scores
-* Quality status
+* Values, units, confidence scores, quality status
+* Clickable source links from specification evidence
 
 ### Product Variants
 
@@ -130,7 +135,7 @@ Displays:
 
 * Variant MPNs
 * Variant-specific specifications
-* Source identifiers
+* Linked source tags per variant
 
 ### Evidence Resolution
 
@@ -196,8 +201,12 @@ React Application
 │   └── History
 │
 ├── Components
-│   └── Graph
-│       └── AKGPGraph
+│   ├── Graph
+│   │   └── AKGPGraph
+│   └── SourceLink
+│
+├── Services
+│   └── api.ts
 │
 ├── API Integration
 │   └── FastAPI Backend
@@ -601,12 +610,12 @@ The frontend uses React Router.
 
 Recommended routes:
 
-| Route                       | Purpose                 |
-| --------------------------- | ----------------------- |
-| `/`                         | Landing page            |
-| `/investigate`              | New investigation       |
-| `/results/:investigationId` | Investigation results   |
-| `/history`                  | Previous investigations |
+| Route                              | Purpose                 |
+| ---------------------------------- | ----------------------- |
+| `/`                                | Landing page            |
+| `/investigate`                     | New investigation       |
+| `/investigate/:investigationId`    | Investigation results   |
+| `/history`                         | Previous investigations |
 
 Example:
 
@@ -624,7 +633,7 @@ Example:
   />
 
   <Route
-    path="/results/:investigationId"
+    path="/investigate/:investigationId"
     element={<Results />}
   />
 
@@ -640,22 +649,20 @@ Example:
 
 # 🔌 API Integration
 
-The frontend communicates with the backend using the `fetch` API.
+The frontend communicates with the backend through `frontend/src/services/api.ts`:
+
+| Function | Endpoint | Purpose |
+| -------- | -------- | ------- |
+| `createInvestigation` | `POST /investigate` | Start pipeline |
+| `getInvestigation` | `GET /investigate/{id}` | Poll tasks and status |
+| `getInvestigationResult` | `GET /investigate/{id}/result` | Load results page |
+| `listInvestigations` | `GET /investigations` | History archive |
+| `extractProductFromImage` | `POST /investigate/extract-from-image` | Gemini image extraction |
 
 Example:
 
 ```typescript
-const response = await fetch(
-  `${API_BASE_URL}/investigate/${investigationId}/result`
-);
-
-if (!response.ok) {
-  throw new Error(
-    "Failed to load investigation"
-  );
-}
-
-const data = await response.json();
+const data = await getInvestigationResult(investigationId);
 ```
 
 The backend API is responsible for investigation processing.
@@ -1073,64 +1080,27 @@ Potential frontend improvements include:
 
 ### Investigation History
 
-A richer history table with:
+Additional history features:
 
-* Search
-* Filtering
-* Sorting
-* Status filters
-* Date filters
-
-### Live Pipeline
-
-Real-time task progress using polling or WebSockets.
+* Sorting and date filters
+* Persistent storage across server restarts (backend change)
+* Pagination for large archives
 
 ### Evidence Explorer
 
-Allow users to click a specification and view:
-
-```text
-Specification
-     ↓
-Evidence
-     ↓
-Source
-     ↓
-Original snippet
-```
+Allow users to click a specification and view the original snippet inline.
 
 ### Human Review
 
-Allow users to review unresolved conflicts:
-
-```text
-Conflict
-   ↓
-Evidence
-   ↓
-User decision
-   ↓
-Approved canonical value
-```
+Allow users to approve or override unresolved conflicts.
 
 ### Advanced AKGP
 
-Expand the graph to include:
-
-* Specifications
-* Standards
-* Applications
-* Categories
-* Brands
-* Related products
+Expand the graph to include specifications, standards, applications, and related products.
 
 ### Export
 
-Allow users to export product intelligence as:
-
-* JSON
-* CSV
-* Product catalog format
+Allow users to export product intelligence as JSON, CSV, or catalog format.
 
 ---
 
@@ -1157,12 +1127,14 @@ Current frontend capabilities:
 * [x] Loading states
 * [x] Error states
 * [x] Responsive graph layout
+* [x] Investigation history with search
+* [x] Live task polling during investigations
+* [x] Image upload and Gemini product extraction
+* [x] Clickable source links on results
 
 Planned:
 
-* [ ] Investigation history
-* [ ] Live task polling
-* [ ] Evidence explorer
+* [ ] Evidence explorer (inline snippets)
 * [ ] Human review UI
 * [ ] Advanced graph relationships
 * [ ] Export functionality
@@ -1177,7 +1149,7 @@ Its primary purpose is to turn complex backend intelligence into an understandab
 
 ```text
 ┌──────────────────────┐
-│   Product / MPN      │
+│ Product / MPN / Image│
 └──────────┬───────────┘
            │
            ▼
@@ -1206,6 +1178,3 @@ Its primary purpose is to turn complex backend intelligence into an understandab
 ```
 
 The frontend acts as the **interactive intelligence workspace**, allowing users to investigate products, understand how information was resolved, inspect variants and evidence, and explore the resulting product knowledge graph.
-
-```
-```

@@ -18,6 +18,12 @@ class InvestigationRequest(BaseModel):
     )
 
 
+class ProductExtractionResponse(BaseModel):
+    manufacturer: Optional[str] = None
+    mpn: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class InvestigationCreatedResponse(BaseModel):
     investigation_id: str
     status: str

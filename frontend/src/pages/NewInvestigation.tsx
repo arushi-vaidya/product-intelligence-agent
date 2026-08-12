@@ -3,13 +3,23 @@ import {
   ArrowRight,
   Check,
   Circle,
+  ImagePlus,
+  LoaderCircle,
   Search,
+  X,
 } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 
 import {
   createInvestigation,
+  extractProductFromImage,
   getInvestigation,
 } from "../services/api";
 
@@ -27,20 +37,164 @@ export const stages = [
   "Product Intelligence",
 ];
 
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
 function NewInvestigation() {
   const navigate = useNavigate();
+  const fileInputRef =
+    useRef<HTMLInputElement>(null);
 
-  const [manufacturer, setManufacturer] = useState("");
+  const [manufacturer, setManufacturer] =
+    useState("");
   const [mpn, setMpn] = useState("");
 
+  const [imageFile, setImageFile] =
+    useState<File | null>(null);
+  const [imagePreview, setImagePreview] =
+    useState<string | null>(null);
+
+  const [extracting, setExtracting] =
+    useState(false);
+  const [extractionNote, setExtractionNote] =
+    useState("");
+
   const [running, setRunning] = useState(false);
-  const [activeStage, setActiveStage] = useState(-1);
+  const [activeStage, setActiveStage] =
+    useState(-1);
   const [error, setError] = useState("");
 
-  const startInvestigation = async () => {
-    if (!manufacturer.trim() || !mpn.trim()) {
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview(null);
+      return;
+    }
+
+    const previewUrl =
+      URL.createObjectURL(imageFile);
+
+    setImagePreview(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [imageFile]);
+
+  const handleImageSelection = (
+    file: File | null
+  ) => {
+    if (!file) {
+      return;
+    }
+
+    if (
+      !ACCEPTED_IMAGE_TYPES.includes(
+        file.type
+      )
+    ) {
       setError(
-        "Please enter both manufacturer and product."
+        "Please upload a JPEG, PNG, WebP, or GIF image."
+      );
+      return;
+    }
+
+    setError("");
+    setExtractionNote("");
+    setImageFile(file);
+  };
+
+  const handleFileInputChange = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file =
+      event.target.files?.[0] ?? null;
+
+    handleImageSelection(file);
+    event.target.value = "";
+  };
+
+  const handleDrop = (
+    event: DragEvent<HTMLDivElement>
+  ) => {
+    event.preventDefault();
+
+    const file =
+      event.dataTransfer.files?.[0] ?? null;
+
+    handleImageSelection(file);
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setExtractionNote("");
+  };
+
+  const extractFromImage = async () => {
+    if (!imageFile) {
+      setError(
+        "Upload an image before extracting product details."
+      );
+      return;
+    }
+
+    setError("");
+    setExtractionNote("");
+    setExtracting(true);
+
+    try {
+      const extracted =
+        await extractProductFromImage(
+          imageFile
+        );
+
+      if (extracted.manufacturer) {
+        setManufacturer(
+          extracted.manufacturer
+        );
+      }
+
+      if (extracted.mpn) {
+        setMpn(extracted.mpn);
+      }
+
+      if (
+        !extracted.manufacturer &&
+        !extracted.mpn
+      ) {
+        throw new Error(
+          "Could not extract a manufacturer or product from the image."
+        );
+      }
+
+      setExtractionNote(
+        extracted.notes ||
+          "Product details extracted from image. Review before starting the investigation."
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Image extraction failed."
+      );
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const startInvestigation = async () => {
+    if (
+      !manufacturer.trim() ||
+      !mpn.trim()
+    ) {
+      setError(
+        "Please enter both manufacturer and product, or upload an image and extract the details."
       );
       return;
     }
@@ -51,19 +205,20 @@ function NewInvestigation() {
     try {
       const created =
         await createInvestigation({
-          manufacturer: manufacturer.trim(),
+          manufacturer:
+            manufacturer.trim(),
           mpn: mpn.trim(),
         });
 
       await pollInvestigation(
         created.investigation_id
       );
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
 
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Investigation failed."
       );
 
@@ -82,7 +237,9 @@ function NewInvestigation() {
 
       updatePipeline(investigation.tasks);
 
-      if (investigation.status === "done") {
+      if (
+        investigation.status === "done"
+      ) {
         navigate(
           `/investigate/${investigationId}`
         );
@@ -90,7 +247,9 @@ function NewInvestigation() {
         return;
       }
 
-      if (investigation.status === "failed") {
+      if (
+        investigation.status === "failed"
+      ) {
         throw new Error(
           "Investigation failed."
         );
@@ -123,7 +282,8 @@ function NewInvestigation() {
 
     const runningTask =
       tasks.find(
-        (task) => task.status === "running"
+        (task) =>
+          task.status === "running"
       );
 
     if (runningTask) {
@@ -170,7 +330,7 @@ function NewInvestigation() {
           <p>
             {running
               ? `${manufacturer} · ${mpn}`
-              : "Give us a manufacturer and product identifier."}
+              : "Enter details manually or upload a product image for Gemini to read."}
           </p>
         </div>
       </header>
@@ -191,12 +351,127 @@ function NewInvestigation() {
             <div className="target-intro">
               <h2>Define the target</h2>
               <p>
-                Provide the manufacturer and the
-                product / MPN identifier. The
-                pipeline runs 11 agents to
-                assemble the final product
-                intelligence.
+                Provide the manufacturer and
+                product / MPN identifier, or
+                upload a photo of the product
+                or nameplate and let Gemini
+                extract the details.
               </p>
+            </div>
+
+            <div className="image-upload-section">
+              <label>
+                Upload product image
+              </label>
+
+              <div
+                className={`image-upload-dropzone${
+                  imagePreview
+                    ? " has-preview"
+                    : ""
+                }`}
+                onDragOver={(event) =>
+                  event.preventDefault()
+                }
+                onDrop={handleDrop}
+                onClick={() => {
+                  if (!imagePreview) {
+                    fileInputRef.current?.click();
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                  ) {
+                    event.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_IMAGE_TYPES.join(
+                    ","
+                  )}
+                  hidden
+                  onChange={
+                    handleFileInputChange
+                  }
+                />
+
+                {imagePreview ? (
+                  <div className="image-upload-preview">
+                    <img
+                      src={imagePreview}
+                      alt="Uploaded product preview"
+                    />
+
+                    <button
+                      type="button"
+                      className="image-upload-clear"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        clearImage();
+                      }}
+                      aria-label="Remove uploaded image"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <ImagePlus size={18} />
+
+                    <div className="image-upload-copy">
+                      <strong>
+                        Upload a product image
+                      </strong>
+
+                      <span>
+                        Drop or browse · JPEG, PNG, WebP, GIF · 10 MB max
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="secondary-button full-width image-extract-button"
+                onClick={extractFromImage}
+                disabled={
+                  !imageFile || extracting
+                }
+              >
+                {extracting ? (
+                  <>
+                    <LoaderCircle
+                      size={17}
+                      className="spin-icon"
+                    />
+                    Extracting with Gemini...
+                  </>
+                ) : (
+                  <>
+                    Extract manufacturer &amp; product
+                    <ArrowRight size={17} />
+                  </>
+                )}
+              </button>
+
+              {extractionNote ? (
+                <p className="extraction-note">
+                  {extractionNote}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="input-divider">
+              <span>or enter manually</span>
             </div>
 
             <label>
@@ -280,11 +555,6 @@ function NewInvestigation() {
   );
 }
 
-// Backend agent names don't always map 1:1 onto
-// the human-readable stage labels (e.g. the
-// "document_agent" powers the "Document
-// Extraction" stage), so we use an explicit
-// lookup instead of fuzzy substring matching.
 const AGENT_TO_STAGE: Record<string, string> = {
   intake_agent: "Intake",
   research_agent: "Research",
@@ -306,7 +576,6 @@ function getStageIndex(agent: string) {
     return stages.indexOf(stage);
   }
 
-  // Fallback for any unrecognized agent name.
   const normalized = agent
     .toLowerCase()
     .replace(/_agent$/, "")

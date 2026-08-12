@@ -27,6 +27,12 @@ export interface InvestigationRequest {
   mpn: string;
 }
 
+export interface ProductExtractionResponse {
+  manufacturer?: string | null;
+  mpn?: string | null;
+  notes?: string | null;
+}
+
 export interface InvestigationCreatedResponse {
   investigation_id: string;
   status: string;
