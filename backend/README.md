@@ -1005,6 +1005,32 @@ GET /investigate/{investigation_id}/result
 
 ---
 
+# Deployment (Render)
+
+Deploy this backend as a **Web Service** on [Render](https://render.com).
+
+Use the repo root [`render.yaml`](../render.yaml) blueprint, or configure manually:
+
+| Setting | Value |
+| -------- | ----- |
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+
+Required environment variables:
+
+```env
+TAVILY_API_KEY=...
+GEMINI_API_KEY=...
+FRONTEND_URL=https://your-app.vercel.app
+```
+
+Optional: `CORS_ORIGINS` for additional allowed origins (comma-separated).
+
+Preview Vercel deployments (`*.vercel.app`) are allowed automatically.
+
+---
+
 ## Status
 
 **Backend MVP: Complete**

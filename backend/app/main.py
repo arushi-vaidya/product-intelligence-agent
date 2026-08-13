@@ -1,7 +1,10 @@
 from typing import Any, Optional
 
+import os
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
 from app.dfoo.orchestrator import DFOO
 
@@ -35,16 +38,46 @@ app = FastAPI(
 )
 
 
+load_dotenv()
+
+
+def get_cors_origins() -> list[str]:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+
+    frontend_url = os.getenv("FRONTEND_URL")
+
+    if frontend_url:
+        origins.append(
+            frontend_url.rstrip("/")
+        )
+
+    extra_origins = os.getenv(
+        "CORS_ORIGINS",
+        "",
+    )
+
+    for origin in extra_origins.split(","):
+        cleaned = origin.strip().rstrip("/")
+
+        if cleaned and cleaned not in origins:
+            origins.append(cleaned)
+
+    return origins
+
+
 # ==========================================
 # CORS
 # ==========================================
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=get_cors_origins(),
+    allow_origin_regex=(
+        r"https://.*\.vercel\.app"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

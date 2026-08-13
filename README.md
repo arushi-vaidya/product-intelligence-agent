@@ -1137,29 +1137,72 @@ Results Page
 
 # 🌐 CORS
 
-During local development, the backend allows requests from:
+Local development origins are allowed by default. In production, configure:
 
-```text
-http://localhost:5173
-http://127.0.0.1:5173
+```env
+FRONTEND_URL=https://your-app.vercel.app
+CORS_ORIGINS=https://custom-domain.com
 ```
 
-FastAPI CORS configuration:
+All `*.vercel.app` preview deployments are allowed automatically via origin regex.
 
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+---
+
+# 🚀 Deployment
+
+## Backend — Render
+
+The repo includes a [`render.yaml`](render.yaml) blueprint.
+
+1. Push this repository to GitHub.
+2. In [Render](https://render.com), click **New → Blueprint** and connect the repo.
+3. Set secret environment variables when prompted:
+   - `TAVILY_API_KEY`
+   - `GEMINI_API_KEY`
+   - `FRONTEND_URL` — your Vercel production URL (set after frontend deploy)
+4. Deploy. Note the service URL, e.g. `https://product-intelligence-api.onrender.com`.
+
+Manual setup (without Blueprint):
+
+| Setting | Value |
+| -------- | ----- |
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Health Check | `/` |
+
+**Render free tier notes:** the service sleeps after inactivity (cold starts), and investigation history is in-memory (resets on redeploy/restart).
+
+---
+
+## Frontend — Vercel
+
+1. In [Vercel](https://vercel.com), **Add New → Project** and import the GitHub repo.
+2. Set **Root Directory** to `frontend`.
+3. Add environment variable:
+   ```env
+   VITE_API_URL=https://your-service.onrender.com
+   ```
+   (no trailing slash)
+4. Deploy. Vercel uses `frontend/vercel.json` for SPA routing.
+
+CLI deploy from the frontend folder:
+
+```bash
+cd frontend
+vercel --prod
 ```
 
-For production, replace this with the actual frontend domain.
+Set `VITE_API_URL` in the Vercel project settings before building.
+
+---
+
+## Post-deploy checklist
+
+1. Deploy backend on Render → copy API URL.
+2. Set `VITE_API_URL` on Vercel → redeploy frontend.
+3. Set `FRONTEND_URL` on Render to your Vercel URL → redeploy backend (CORS).
+4. Test: open Vercel app → start an investigation → confirm API calls succeed.
 
 ---
 

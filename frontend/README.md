@@ -341,15 +341,26 @@ Add:
 VITE_API_URL=http://127.0.0.1:8000
 ```
 
-The frontend uses this value as the backend API base URL.
+See `frontend/.env.example`. The shared base URL lives in `src/config/api.ts`.
 
-For example:
+---
 
-```typescript
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://127.0.0.1:8000";
+# 🚀 Deployment (Vercel)
+
+1. Import the GitHub repo in [Vercel](https://vercel.com).
+2. Set **Root Directory** to `frontend`.
+3. Add environment variable:
+   ```env
+   VITE_API_URL=https://your-service.onrender.com
+   ```
+4. Deploy. SPA routing is configured in `vercel.json`.
+
+```bash
+cd frontend
+vercel --prod
 ```
+
+After deploy, set `FRONTEND_URL` on the Render backend to your Vercel URL.
 
 ---
 
