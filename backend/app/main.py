@@ -1,9 +1,11 @@
 from typing import Any, Optional
 
+import io
 import os
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 
 from app.dfoo.orchestrator import DFOO
@@ -21,6 +23,11 @@ from app.schemas.api import (
 from app.services.product_image_extractor import (
     ProductImageExtractionError,
     extract_product_from_image,
+)
+from app.services.bulk_excel_service import (
+    BulkExcelError,
+    bulk_investigation_repository,
+    start_bulk_excel_investigation,
 )
 
 
@@ -277,6 +284,106 @@ async def extract_product_from_image_endpoint(
 
     return ProductExtractionResponse(
         **extracted
+    )
+
+
+# ==========================================
+# BULK EXCEL / CSV INVESTIGATION
+#
+# Accepts a spreadsheet of products, runs each
+# row through the SAME DFOO pipeline used by a
+# single manual investigation (nothing about the
+# pipeline itself is changed here), and streams
+# back a filled-in Delivery Format .xlsx.
+# ==========================================
+
+@app.post("/investigate/bulk-excel")
+async def bulk_excel_investigate(
+    file: UploadFile = File(...),
+):
+
+    content = await file.read()
+
+    try:
+        job = start_bulk_excel_investigation(
+            dfoo=dfoo,
+            filename=file.filename or "",
+            content=content,
+        )
+    except BulkExcelError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    return {
+        "bulk_investigation_id": job.id,
+        "status": job.status,
+    }
+
+
+@app.get("/investigate/bulk-excel/{bulk_investigation_id}")
+async def get_bulk_excel_investigation(
+    bulk_investigation_id: str,
+):
+    job = bulk_investigation_repository.get(
+        bulk_investigation_id
+    )
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Bulk investigation not found.",
+        )
+
+    return {
+        "bulk_investigation_id": job.id,
+        "status": job.status,
+        "error": job.error,
+    }
+
+
+@app.get(
+    "/investigate/bulk-excel/{bulk_investigation_id}/download"
+)
+async def download_bulk_excel_investigation(
+    bulk_investigation_id: str,
+):
+    job = bulk_investigation_repository.get(
+        bulk_investigation_id
+    )
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Bulk investigation not found.",
+        )
+
+    if job.status == "failed":
+        raise HTTPException(
+            status_code=500,
+            detail=job.error or "Bulk investigation failed.",
+        )
+
+    if job.status != "done" or job.workbook_bytes is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Bulk investigation is still running.",
+        )
+
+    output_filename = "delivery_format_output.xlsx"
+
+    return StreamingResponse(
+        io.BytesIO(job.workbook_bytes),
+        media_type=(
+            "application/vnd.openxmlformats-"
+            "officedocument.spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{output_filename}"'
+            )
+        },
     )
 
 

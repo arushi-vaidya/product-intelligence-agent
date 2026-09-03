@@ -1,4 +1,11 @@
+import re
 from urllib.parse import urlparse
+
+
+def normalize_search_text(value: str) -> str:
+    """Compare part numbers independently of punctuation or whitespace."""
+
+    return re.sub(r"[^a-z0-9]", "", value.lower())
 
 
 class SourceFilter:
@@ -11,16 +18,13 @@ class SourceFilter:
     ) -> list[dict]:
 
         filtered = []
+        query_fallbacks = []
         seen_urls = set()
 
-        manufacturer_normalized = (
-            manufacturer.lower()
-            .replace(" ", "")
-            .replace("-", "")
-            .replace("_", "")
+        manufacturer_normalized = normalize_search_text(
+            manufacturer
         )
-
-        mpn_normalized = mpn.lower().replace(" ", "")
+        mpn_normalized = normalize_search_text(mpn)
 
         for source in sources:
 
@@ -42,65 +46,7 @@ class SourceFilter:
 
             seen_urls.add(normalized_url)
 
-            # --------------------------------
-            # 2. Combine searchable text
-            # --------------------------------
-
-            searchable_text = (
-                f"{url} {title} {snippet}"
-            ).lower()
-
-            searchable_normalized = (
-                searchable_text
-                .replace(" ", "")
-                .replace("-", "")
-                .replace("_", "")
-            )
-
-            # --------------------------------
-            # 3. Manufacturer relevance
-            # --------------------------------
-
-            manufacturer_match = (
-                manufacturer_normalized
-                in searchable_normalized
-            )
-
-            if not manufacturer_match:
-                continue
-
-            # --------------------------------
-            # 4. Product-family relevance
-            # --------------------------------
-
-            # iC60N C20 → iC60N
-            # This allows us to find pages
-            # for the product family even if
-            # the exact MPN is absent.
-
-            mpn_parts = self._extract_product_terms(
-                mpn
-            )
-
-            product_match = any(
-                term in searchable_normalized
-                for term in mpn_parts
-            )
-
-            if not product_match:
-                continue
-
-            # --------------------------------
-            # 5. Reject obvious low-value
-            # sources
-            # --------------------------------
-
-            domain = (
-                urlparse(url)
-                .netloc
-                .lower()
-            )
-
+            domain = urlparse(url).netloc.lower()
             blocked_domains = {
                 "amazon.com",
                 "amazon.in",
@@ -114,19 +60,89 @@ class SourceFilter:
                 continue
 
             # --------------------------------
+            # 2. Combine searchable text
+            # --------------------------------
+
+            searchable_text = (
+                f"{url} {title} {snippet}"
+            ).lower()
+
+            searchable_normalized = normalize_search_text(
+                searchable_text
+            )
+
+            # --------------------------------
+            # 3. Manufacturer relevance
+            # --------------------------------
+
+            manufacturer_match = (
+                manufacturer_normalized
+                in searchable_normalized
+            )
+
+            # --------------------------------
+            # 4. Part-number relevance
+            # --------------------------------
+
+            # iC60N C20 → iC60N
+            # This allows us to find pages
+            # for the product family even if
+            # the exact MPN is absent.
+
+            mpn_parts = self._extract_product_terms(
+                mpn
+            )
+
+            product_family_match = any(
+                term in searchable_normalized
+                for term in mpn_parts
+            )
+
+            exact_mpn_match = (
+                bool(mpn_normalized)
+                and mpn_normalized in searchable_normalized
+            )
+
+            # A full manufacturer name is often absent from a
+            # distributor title/snippet. An exact MPN is a stronger
+            # product identity signal, so retain that result even when
+            # the manufacturer text is missing.
+            if not exact_mpn_match and not (
+                manufacturer_match and product_family_match
+            ):
+                # Tavily can return a manufacturer page with a shortened
+                # title/snippet that omits the MPN. Keep it as a fallback
+                # only when the query's manufacturer still matches.
+                if manufacturer_match:
+                    query_fallbacks.append(
+                        {
+                            **source,
+                            "manufacturer_match": True,
+                            "product_match": False,
+                            "exact_mpn_match": False,
+                            "search_query_match": True,
+                            "domain": domain,
+                        }
+                    )
+                continue
+
+            # --------------------------------
             # 6. Add relevance metadata
             # --------------------------------
 
             source = {
                 **source,
-                "manufacturer_match": True,
-                "product_match": True,
+                "manufacturer_match": manufacturer_match,
+                "product_match": (
+                    exact_mpn_match or product_family_match
+                ),
+                "exact_mpn_match": exact_mpn_match,
                 "domain": domain,
             }
 
             filtered.append(source)
 
-        return filtered
+        return filtered or query_fallbacks
 
     def _extract_product_terms(
         self,

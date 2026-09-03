@@ -110,6 +110,8 @@ class SourceDiscoveryService:
             for keyword in [
                 "schneider-electric",
                 "se.com",
+                "3m.com",
+                "diablotools.com",
             ]
         ):
             return "manufacturer_page"

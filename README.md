@@ -1,5 +1,7 @@
 # Industrial Product Intelligence
 
+# Use bulk upload for excel sheets
+
 > An AI-powered investigation and enrichment platform for transforming fragmented industrial product data into structured, canonical, commerce-ready product intelligence.
 
 ---

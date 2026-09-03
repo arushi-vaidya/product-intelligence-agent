@@ -5,6 +5,7 @@ import "./Navbar.css";
 const links = [
   { label: "Home", path: "/" },
   { label: "New Investigation", path: "/investigate" },
+  { label: "Bulk Upload", path: "/bulk-upload" },
   { label: "History", path: "/history" },
 ];
 

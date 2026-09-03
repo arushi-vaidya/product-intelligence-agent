@@ -15,16 +15,6 @@ class ConflictAgent(Agent):
             {}
         )
 
-        if not specifications:
-            return AgentOutput(
-                success=False,
-                data={},
-                errors=[
-                    "No specifications available "
-                    "for conflict analysis"
-                ],
-            )
-
         conflicts = []
         resolved_specifications = {}
 

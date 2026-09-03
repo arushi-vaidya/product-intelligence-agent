@@ -85,6 +85,96 @@ export async function listInvestigations(
   );
 }
 
+export async function runBulkExcelInvestigation(
+  file: File
+): Promise<Blob> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_BASE_URL}/investigate/bulk-excel`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    let message = `Bulk investigation failed: ${response.status}`;
+
+    try {
+      const error = await response.json();
+
+      if (error?.detail) {
+        message =
+          typeof error.detail === "string"
+            ? error.detail
+            : JSON.stringify(error.detail);
+      }
+    } catch {
+      // Keep default error message.
+    }
+
+    throw new Error(message);
+  }
+
+  const started = (await response.json()) as {
+    bulk_investigation_id: string;
+  };
+
+  return waitForBulkExcelInvestigation(
+    started.bulk_investigation_id
+  );
+}
+
+async function waitForBulkExcelInvestigation(
+  investigationId: string
+): Promise<Blob> {
+  const statusPath =
+    `/investigate/bulk-excel/${investigationId}`;
+
+  while (true) {
+    const response = await fetch(
+      `${API_BASE_URL}${statusPath}`
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Could not check bulk investigation: ${response.status}`
+      );
+    }
+
+    const status = (await response.json()) as {
+      status: string;
+      error?: string | null;
+    };
+
+    if (status.status === "done") {
+      const downloadResponse = await fetch(
+        `${API_BASE_URL}${statusPath}/download`
+      );
+
+      if (!downloadResponse.ok) {
+        throw new Error(
+          `Could not download filled sheet: ${downloadResponse.status}`
+        );
+      }
+
+      return downloadResponse.blob();
+    }
+
+    if (status.status === "failed") {
+      throw new Error(
+        status.error || "Bulk investigation failed."
+      );
+    }
+
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 1_500);
+    });
+  }
+}
+
 export async function extractProductFromImage(
   file: File
 ): Promise<ProductExtractionResponse> {

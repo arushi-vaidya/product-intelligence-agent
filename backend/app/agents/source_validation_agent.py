@@ -167,13 +167,17 @@ class SourceValidationAgent(Agent):
 
         score = min(score, 1.0)
 
-        is_valid = (
+        # An exact part-number match uniquely identifies a product even
+        # when a distributor's result title omits the manufacturer. Keep
+        # the stricter manufacturer + family rule for partial matches.
+        # A manufacturer-matched result returned for the exact query is a
+        # fallback for pages whose search snippet omits the part number.
+        is_valid = exact_mpn_match or (
             manufacturer_match
             and (
-                exact_mpn_match
-                or product_family_match
+                product_family_match and score >= 0.50
+                or source.get("search_query_match", False)
             )
-            and score >= 0.50
         )
 
         evidence = []
@@ -191,6 +195,11 @@ class SourceValidationAgent(Agent):
         elif product_family_match:
             evidence.append(
                 "Product family match"
+            )
+
+        if source.get("search_query_match", False):
+            evidence.append(
+                "Matched the manufacturer product query"
             )
 
         if authority_tier == 1:

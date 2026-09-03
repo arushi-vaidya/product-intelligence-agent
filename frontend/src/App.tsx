@@ -7,6 +7,7 @@ import {
 import Navbar from "./components/nav/Navbar";
 import Landing from "./pages/Home";
 import NewInvestigation from "./pages/NewInvestigation";
+import BulkUpload from "./pages/BulkUpload";
 import History from "./pages/History";
 import Results from "./pages/Results";
 
@@ -24,6 +25,11 @@ function App() {
         <Route
           path="/investigate"
           element={<NewInvestigation />}
+        />
+
+        <Route
+          path="/bulk-upload"
+          element={<BulkUpload />}
         />
 
         <Route

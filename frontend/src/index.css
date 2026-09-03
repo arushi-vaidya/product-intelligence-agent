@@ -643,6 +643,64 @@ button {
   background: #48d597;
 }
 
+
+/* =========================================
+   BULK UPLOAD
+========================================= */
+
+.sheet-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.sheet-preview span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #d7dae2;
+}
+
+.bulk-ready-badge {
+  margin: 12px 0 0;
+  width: fit-content;
+}
+
+.bulk-info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.bulk-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bulk-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bulk-steps strong {
+  font-size: 13px;
+  color: #d7dae2;
+}
+
+.bulk-steps span {
+  font-size: 13px;
+  color: #6f7784;
+  line-height: 1.5;
+}
+
 .result-placeholder {
   min-height: 400px;
 }
